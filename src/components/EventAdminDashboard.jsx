@@ -514,12 +514,158 @@ const EventAdminDashboard = () => {
     </div>
   );
 
-  // Dashboard View (simplificado para el ejemplo)
+  // Dashboard View
   const DashboardView = () => (
     <div className="p-6 bg-gray-50 min-h-screen">
-      <div className="text-center text-gray-500 mt-20">
-        <h2 className="text-xl">Dashboard View</h2>
-        <p>Haz clic en "Inventario" para ver el formulario funcionando</p>
+      <div className="mb-6 flex items-center justify-between">
+        <div className="flex items-center space-x-3">
+          <span className="w-3 h-3 bg-green-500 rounded-full"></span>
+          <span className="text-sm font-medium text-gray-700">Evento activo</span>
+        </div>
+        <button className="bg-blue-500 text-white px-4 py-2 rounded text-sm hover:bg-blue-600 font-medium">
+          🔗 Compartir
+        </button>
+      </div>
+
+      {/* Stats Cards */}
+      <div className="grid grid-cols-3 gap-4 mb-6">
+        <div className="bg-white p-4 rounded-lg border shadow-sm">
+          <div className="text-gray-500 text-sm mb-1 font-medium">💰 Total de ventas</div>
+          <div className="text-2xl font-bold text-gray-900">$ {eventData.totalVentas?.toLocaleString() || '0'}</div>
+        </div>
+        <div className="bg-white p-4 rounded-lg border shadow-sm">
+          <div className="text-gray-500 text-sm mb-1 font-medium">📊 Ventas atribuidas del día</div>
+          <div className="text-2xl font-bold text-gray-900">$ {eventData.ventasAtribuidas?.toLocaleString() || '0'}</div>
+        </div>
+        <div className="bg-white p-4 rounded-lg border shadow-sm">
+          <div className="text-gray-500 text-sm mb-1 font-medium">👥 Registrados nuevos</div>
+          <div className="text-2xl font-bold text-gray-900">{eventData.registradosNuevos || '0'}</div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-6">
+        {/* Ventas del día */}
+        <div className="bg-white p-4 rounded-lg border shadow-sm">
+          <h3 className="text-base font-medium mb-4 text-gray-900">📊 Historial</h3>
+          <div className="space-y-2">
+            <div className="text-sm font-medium text-gray-700">Ventas del día</div>
+            {(eventData.ventasDelDia || []).map((venta, index) => (
+              <div key={index} className="flex justify-between items-center py-1">
+                <div className="flex items-center space-x-2">
+                  <div className="w-2 h-2 bg-gray-800 rounded-full"></div>
+                  <span className="text-sm text-gray-700">{venta.item}</span>
+                </div>
+                <span className="text-sm font-medium text-gray-900">$ {venta.amount.toLocaleString()}</span>
+              </div>
+            ))}
+            <button className="text-blue-500 text-sm mt-2 hover:text-blue-600">Ver todas las ventas del día ↓</button>
+          </div>
+        </div>
+
+        {/* Calendar */}
+        <div className="bg-white p-4 rounded-lg border shadow-sm">
+          <h3 className="text-base font-medium mb-4 text-gray-900">📅 Calendario</h3>
+          <div className="text-center mb-3">
+            <div className="font-medium text-sm text-gray-700">Mayo de 2025</div>
+          </div>
+          <div className="grid grid-cols-7 gap-1 text-xs">
+            {['Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab', 'Dom'].map(day => (
+              <div key={day} className="text-center font-medium text-gray-500 p-1">{day}</div>
+            ))}
+            {Array.from({length: 31}, (_, i) => i + 1).map(day => (
+              <div key={day} className={`text-center p-1 cursor-pointer hover:bg-blue-100 rounded ${day === 20 ? 'bg-blue-500 text-white rounded' : 'text-gray-700'}`}>
+                {day}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Productos Agendables */}
+      <div className="mt-6 bg-white p-4 rounded-lg border shadow-sm">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-base font-medium text-gray-900">📋 Productos agendables</h3>
+          <button className="bg-blue-500 text-white px-4 py-2 rounded text-sm hover:bg-blue-600 font-medium">
+            ➕ Crear agendamiento
+          </button>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b bg-gray-50">
+                <th className="text-left py-2 px-3 font-medium text-gray-700">Tipo</th>
+                <th className="text-left py-2 px-3 font-medium text-gray-700">Cupos en total</th>
+                <th className="text-left py-2 px-3 font-medium text-gray-700">Cupos usados</th>
+                <th className="text-left py-2 px-3 font-medium text-gray-700">Cupos Validados</th>
+                <th className="text-left py-2 px-3 font-medium text-gray-700">Cupos sin usar</th>
+                <th className="text-left py-2 px-3 font-medium text-gray-700">Anulados</th>
+                <th className="text-left py-2 px-3"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {productosAgendables.map((producto, index) => (
+                <tr key={index} className="border-b hover:bg-gray-50">
+                  <td className="py-2 px-3 text-gray-900">{producto.tipo}</td>
+                  <td className="py-2 px-3 text-gray-700">{producto.cuposTotal}</td>
+                  <td className="py-2 px-3">
+                    <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs font-medium">
+                      {producto.cuposUsados}
+                    </span>
+                  </td>
+                  <td className="py-2 px-3">
+                    <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs font-medium">
+                      {producto.cuposValidados}
+                    </span>
+                  </td>
+                  <td className="py-2 px-3 text-gray-700">{producto.cuposSinUsar}</td>
+                  <td className="py-2 px-3 text-gray-700">{producto.anulados || '-'}</td>
+                  <td className="py-2 px-3">
+                    <button className="bg-blue-500 text-white px-3 py-1 rounded text-xs hover:bg-blue-600 font-medium">
+                      Editar
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <button className="text-blue-500 text-sm mt-2 hover:text-blue-600">Ver todos los agendables ↓</button>
+        </div>
+      </div>
+
+      {/* Historial eventos pasados */}
+      <div className="mt-6 bg-white p-4 rounded-lg border shadow-sm">
+        <h3 className="text-base font-medium mb-4 text-gray-900">📋 Historial eventos pasados</h3>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b bg-gray-50">
+                <th className="text-left py-2 px-3 font-medium text-gray-700">Cliente</th>
+                <th className="text-left py-2 px-3 font-medium text-gray-700">Rut de empresa</th>
+                <th className="text-left py-2 px-3 font-medium text-gray-700">Nombre</th>
+                <th className="text-left py-2 px-3 font-medium text-gray-700">Correo</th>
+                <th className="text-left py-2 px-3 font-medium text-gray-700">Fecha</th>
+                <th className="text-left py-2 px-3"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {historialEventos.map((evento, index) => (
+                <tr key={index} className="border-b hover:bg-gray-50">
+                  <td className="py-2 px-3 text-gray-900">{evento.cliente}</td>
+                  <td className="py-2 px-3 text-gray-700">{evento.rut}</td>
+                  <td className="py-2 px-3 text-gray-700">{evento.nombre}</td>
+                  <td className="py-2 px-3 text-gray-700">{evento.correo}</td>
+                  <td className="py-2 px-3 text-gray-700">{evento.fecha}</td>
+                  <td className="py-2 px-3">
+                    <button className="bg-blue-500 text-white px-3 py-1 rounded text-xs hover:bg-blue-600 font-medium">
+                      Ver informe
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <button className="text-blue-500 text-sm mt-2 hover:text-blue-600">Ver todos los eventos ↓</button>
+        </div>
       </div>
     </div>
   );
