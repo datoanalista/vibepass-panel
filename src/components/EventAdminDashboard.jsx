@@ -1,801 +1,1447 @@
 "use client";
 import React, { useState, useEffect } from 'react';
-import { Search, Bell, Menu, Users, Calendar, Package, Edit, Eye, Trash2, ChevronDown } from 'lucide-react';
+import Link from 'next/link';
+import {
+  Box,
+  Typography,
+  IconButton,
+  Stack,
+  Avatar,
+  Select,
+  MenuItem,
+  FormControl,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Button,
+  Paper,
+  Tabs,
+  Tab
+} from '@mui/material';
+import {
+  Search as SearchIcon,
+  Notifications as NotificationsIcon,
+  Menu as MenuIcon,
+  Dashboard as DashboardIcon,
+  People as PeopleIcon,
+  Inventory as InventoryIcon,
+  KeyboardArrowDown as KeyboardArrowDownIcon,
+  ChevronLeft as ChevronLeftIcon,
+  ChevronRight as ChevronRightIcon,
+  Edit as EditIcon,
+  AttachMoney as AttachMoneyIcon,
+  Description as DescriptionIcon,
+  Person as PersonIcon,
+  Share as ShareIcon,
+  Add as AddIcon
+} from '@mui/icons-material';
+import Usuarios from './Usuarios';
+import AddUserForm from './AddUserForm';
+import Inventario from './Inventario';
+import AddInventoryForm from './AddInventoryForm';
+
+const CalendarComponent = ({ selectedEventId }) => {
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const [eventDate, setEventDate] = useState(null);
+
+  useEffect(() => {
+    if (selectedEventId) {
+      fetchEventDate();
+    }
+  }, [selectedEventId]);
+
+  const fetchEventDate = async () => {
+    try {
+      const response = await fetch(`http://localhost:3001/api/events/${selectedEventId}`);
+      const eventData = await response.json();
+      
+      const actualEventData = eventData.data?.event || eventData.data || eventData;
+      
+      let eventDateString = null;
+      
+      if (actualEventData.informacionGeneral) {
+        eventDateString = actualEventData.informacionGeneral.fechaEvento;
+      }
+      
+      if (!eventDateString) {
+        eventDateString = actualEventData.informacionGeneral?.fechaInicio || 
+                         actualEventData.informacionGeneral?.fecha || 
+                         actualEventData.fechaInicio || 
+                         actualEventData.fecha;
+      }
+      
+      if (eventDateString) {
+        const eventDateObj = new Date(eventDateString);
+        setEventDate(eventDateObj);
+        setCurrentDate(eventDateObj);
+      }
+    } catch (error) {
+      console.error('Error fetching event date:', error);
+    }
+  };
+
+  const monthNames = [
+    'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+    'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+  ];
+
+  const dayNames = ['Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab', 'Dom'];
+
+  const getDaysInMonth = (date) => {
+    const year = date.getFullYear();
+    const month = date.getMonth();
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    const daysInMonth = lastDay.getDate();
+    const startingDayOfWeek = (firstDay.getDay() + 6) % 7;
+
+    const days = [];
+    
+    const prevMonth = new Date(year, month - 1, 0);
+    for (let i = startingDayOfWeek - 1; i >= 0; i--) {
+      days.push({
+        day: prevMonth.getDate() - i,
+        isCurrentMonth: false,
+        isEventDay: false
+      });
+    }
+    
+    for (let day = 1; day <= daysInMonth; day++) {
+      const dayDate = new Date(year, month, day);
+      const isEventDay = eventDate && 
+        dayDate.getDate() === eventDate.getDate() &&
+        dayDate.getMonth() === eventDate.getMonth() &&
+        dayDate.getFullYear() === eventDate.getFullYear();
+      
+      days.push({
+        day,
+        isCurrentMonth: true,
+        isEventDay
+      });
+    }
+    
+    const remainingDays = 42 - days.length;
+    for (let day = 1; day <= remainingDays; day++) {
+      days.push({
+        day,
+        isCurrentMonth: false,
+        isEventDay: false
+      });
+    }
+    
+    return days;
+  };
+
+  const navigateMonth = (direction) => {
+    setCurrentDate(prevDate => {
+      const newDate = new Date(prevDate);
+      newDate.setMonth(prevDate.getMonth() + direction);
+      return newDate;
+    });
+  };
+
+  const days = getDaysInMonth(currentDate);
+
+  return (
+    <Box sx={{ width: '100%', display: 'flex', flexDirection: 'column', pb: 1.5 }}>
+      <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 1.5 }}>
+        <IconButton onClick={() => navigateMonth(-1)} size="small" sx={{ p: 0.5 }}>
+          <ChevronLeftIcon sx={{ fontSize: 16 }} />
+        </IconButton>
+        <Typography variant="body1" sx={{ color: '#374151', fontWeight: 600, fontSize: '14px' }}>
+          {monthNames[currentDate.getMonth()]} de {currentDate.getFullYear()}
+        </Typography>
+        <IconButton onClick={() => navigateMonth(1)} size="small" sx={{ p: 0.5 }}>
+          <ChevronRightIcon sx={{ fontSize: 16 }} />
+        </IconButton>
+      </Stack>
+
+      <Stack direction="row" sx={{ mb: 1 }}>
+        {dayNames.map((day) => (
+          <Box key={day} sx={{ flex: 1, textAlign: 'center', py: 0.5 }}>
+            <Typography variant="caption" sx={{ color: '#6B7280', fontWeight: 600, fontSize: '12px' }}>
+              {day}
+            </Typography>
+          </Box>
+        ))}
+      </Stack>
+
+      <Box sx={{ 
+        display: 'grid', 
+        gridTemplateColumns: 'repeat(7, 1fr)', 
+        gap: 0.5,
+        pb: 3
+      }}>
+        {days.map((dayData, index) => (
+          <Box
+            key={index}
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              borderRadius: '50%',
+              cursor: 'pointer',
+              bgcolor: dayData.isEventDay ? '#3B82F6' : 'transparent',
+              color: dayData.isEventDay ? 'white' : 
+                     dayData.isCurrentMonth ? '#374151' : '#9CA3AF',
+              fontWeight: dayData.isEventDay ? 700 : 400,
+              minHeight: 32,
+              '&:hover': {
+                bgcolor: dayData.isEventDay ? '#2563EB' : '#F3F4F6'
+              }
+            }}
+          >
+            <Typography variant="body2" sx={{ fontSize: '14px' }}>
+              {dayData.day}
+            </Typography>
+          </Box>
+        ))}
+      </Box>
+    </Box>
+  );
+};
 
 const EventAdminDashboard = () => {
-  const [activeView, setActiveView] = useState('inventario'); // Empezamos en inventario
-  const [selectedEventId, setSelectedEventId] = useState('event1');
+  const [activeView, setActiveView] = useState('dashboard');
+  const [selectedEventId, setSelectedEventId] = useState('');
   const [mounted, setMounted] = useState(false);
+  
+  const [events, setEvents] = useState([]);
+  const [eventsLoading, setEventsLoading] = useState(false);
+  
   const [showAddInventoryForm, setShowAddInventoryForm] = useState(false);
   const [showAddUserForm, setShowAddUserForm] = useState(false);
+  const [showEditUserForm, setShowEditUserForm] = useState(false);
+  const [editingUser, setEditingUser] = useState(null);
+  const [showEditInventoryForm, setShowEditInventoryForm] = useState(false);
+  const [editingInventory, setEditingInventory] = useState(null);
+  const [userFormData, setUserFormData] = useState({
+    nombreCompleto: '',
+    correoElectronico: '',
+    rutOId: '',
+    telefonoContacto: '',
+    rol: 'Administrador'
+  });
+  const [createUserLoading, setCreateUserLoading] = useState(false);
+  const [showUserSuccessModal, setShowUserSuccessModal] = useState(false);
+  const [createdUserName, setCreatedUserName] = useState('');
+  const [showUserErrorModal, setShowUserErrorModal] = useState(false);
+  const [userErrorMessage, setUserErrorMessage] = useState('');
+  
+
+  const [inventoryFormData, setInventoryFormData] = useState({
+    nombreProducto: '',
+    categoria: '',
+    descripcion: '',
+    skuCodigoInterno: '',
+    precioVenta: '',
+    stockInicialDisponible: '',
+    imagenProducto: null
+  });
+  const [createInventoryLoading, setCreateInventoryLoading] = useState(false);
+
+
+  const fetchEvents = async () => {
+    try {
+      setEventsLoading(true);
+      
+      const response = await fetch('http://localhost:3001/api/events');
+      const result = await response.json();
+      
+      if (response.ok && result.status === 'success') {
+        const eventsList = result.data.events || [];
+        setEvents(eventsList);
+        
+        if (eventsList.length > 0 && !selectedEventId) {
+          setSelectedEventId(eventsList[0].id);
+        }
+      } else {
+        console.error('❌ API Error:', result.message);
+      }
+    } catch (err) {
+      console.error('💥 Error fetching events:', err);
+    } finally {
+      setEventsLoading(false);
+    }
+  };
+
+
+  const handleUserFormChange = (field, value) => {
+    setUserFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+
+  const createUser = async () => {
+    try {
+      setCreateUserLoading(true);
+      
+
+      const userDataWithEvent = {
+        ...userFormData,
+        eventoId: selectedEventId
+      };
+      
+      const response = await fetch('http://localhost:3001/api/users', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(userDataWithEvent),
+      });
+
+      const result = await response.json();
+      
+      if (response.ok && result.status === 'success') {
+        setCreatedUserName(userFormData.nombreCompleto);
+        setUserFormData({
+          nombreCompleto: '',
+          correoElectronico: '',
+          rutOId: '',
+          telefonoContacto: '',
+          rol: 'Administrador'
+        });
+        setShowAddUserForm(false);
+        setShowUserSuccessModal(true);
+      } else {
+        throw new Error(result.message || 'Error al crear el usuario');
+      }
+    } catch (error) {
+      console.error('❌ Error al crear usuario:', error);
+      setUserErrorMessage(error.message);
+      setShowUserErrorModal(true);
+    } finally {
+      setCreateUserLoading(false);
+    }
+  };
+
+
+  const handleEditUser = (usuario) => {
+    setEditingUser(usuario);
+    setUserFormData({
+      nombreCompleto: usuario.nombreCompleto || '',
+      correoElectronico: usuario.correoElectronico || '',
+      rutOId: usuario.rutOId || '',
+      telefonoContacto: usuario.telefonoContacto || '',
+      rol: usuario.rol || 'Administrador'
+    });
+    setShowEditUserForm(true);
+  };
+
+
+  const updateUser = async () => {
+    try {
+      setCreateUserLoading(true);
+      
+      const response = await fetch(`http://localhost:3001/api/users/${editingUser._id || editingUser.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(userFormData),
+      });
+
+      const result = await response.json();
+      
+      if (response.ok && result.status === 'success') {
+        setUserFormData({
+          nombreCompleto: '',
+          correoElectronico: '',
+          rutOId: '',
+          telefonoContacto: '',
+          rol: 'Administrador'
+        });
+        setShowEditUserForm(false);
+        setEditingUser(null);
+      } else {
+        throw new Error(result.message || 'Error al actualizar el usuario');
+      }
+    } catch (error) {
+      console.error('❌ Error al actualizar usuario:', error);
+      setUserErrorMessage(error.message);
+      setShowUserErrorModal(true);
+    } finally {
+      setCreateUserLoading(false);
+    }
+  };
+
+
+  const handleInventoryFormChange = (field, value) => {
+    setInventoryFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+
+  const handleEditInventory = (item) => {
+    setEditingInventory(item);
+    setInventoryFormData({
+      nombreProducto: item.nombre || item.nombreProducto || '',
+      categoria: item.categoria || '',
+      descripcion: item.descripcion || '',
+      skuCodigoInterno: item.sku || '',
+      precioVenta: item.precio || item.precioVenta || '',
+      stockInicialDisponible: item.stock?.actual || item.stockActual || '',
+      imagenProducto: item.imagen ? { name: 'imagen_actual.jpg', url: item.imagen } : null
+    });
+    setShowEditInventoryForm(true);
+  };
+
+
+  const updateInventory = async () => {
+    try {
+      setCreateInventoryLoading(true);
+      
+      const response = await fetch(`http://localhost:3001/api/inventory/${editingInventory.id || editingInventory._id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          nombreProducto: inventoryFormData.nombreProducto,
+          categoria: inventoryFormData.categoria,
+          descripcion: inventoryFormData.descripcion,
+          sku: inventoryFormData.skuCodigoInterno,
+          precioVenta: parseInt(inventoryFormData.precioVenta) || 0,
+          stockInicial: parseInt(inventoryFormData.stockInicialDisponible) || 0,
+          imagen: inventoryFormData.imagenProducto?.url || null
+        }),
+      });
+
+      const result = await response.json();
+      
+      if (response.ok && result.status === 'success') {
+        
+        setInventoryFormData({
+          nombreProducto: '',
+          categoria: '',
+          descripcion: '',
+          skuCodigoInterno: '',
+          precioVenta: '',
+          stockInicialDisponible: '',
+          imagenProducto: null
+        });
+        
+        setShowEditInventoryForm(false);
+        setEditingInventory(null);
+        
+
+      } else {
+        throw new Error(result.message || 'Error al actualizar el producto');
+      }
+    } catch (error) {
+      console.error('❌ Error al actualizar producto:', error);
+      console.error('Error al actualizar producto:', error.message);
+    } finally {
+      setCreateInventoryLoading(false);
+    }
+  };
+
   useEffect(() => {
     setMounted(true);
+    fetchEvents();
   }, []);
 
   if (!mounted) {
     return null;
   }
 
-  // Datos dummy de eventos
-  const eventosDisponibles = [
-    {
-      id: 'event1',
-      nombre: 'Salto Fest',
-      cliente: 'British Royal',
-      activo: true,
-      data: {
-        totalVentas: 5800000,
-        ventasAtribuidas: 5360000,
-        registradosNuevos: 17,
-        ventasDelDia: [
-          { item: 'Entradas', amount: 2800000 },
-          { item: 'Arriendos', amount: 900000 },
-          { item: 'Bebastibles', amount: 400000 },
-          { item: 'Hot dogs', amount: 700000 },
-          { item: 'Helados', amount: 1000000 }
-        ]
-      }
-    },
-    {
-      id: 'event2',
-      nombre: 'Festival de Primavera',
-      cliente: 'Colegio San Patricio',
-      activo: false,
-      data: {
-        totalVentas: 3200000,
-        ventasAtribuidas: 2900000,
-        registradosNuevos: 23,
-        ventasDelDia: [
-          { item: 'Entradas', amount: 1500000 },
-          { item: 'Comida', amount: 800000 },
-          { item: 'Bebidas', amount: 600000 }
-        ]
-      }
-    },
-    {
-      id: 'event3',
-      nombre: 'Gala de Fin de Año',
-      cliente: 'Instituto Bilingüe',
-      activo: true,
-      data: {
-        totalVentas: 7200000,
-        ventasAtribuidas: 6800000,
-        registradosNuevos: 35,
-        ventasDelDia: [
-          { item: 'Entradas VIP', amount: 4000000 },
-          { item: 'Entradas General', amount: 2200000 },
-          { item: 'Cena', amount: 800000 }
-        ]
+
+  const selectedEvent = events.find(event => event.id === selectedEventId);
+  const selectedEventName = selectedEvent?.informacionGeneral?.nombreEvento || 'Seleccionar evento';
+  
+  // Formatear el nombre del evento seleccionado con fecha
+  const getSelectedEventDisplayName = () => {
+    if (!selectedEvent) return 'Seleccionar evento';
+    
+    const eventName = selectedEvent.informacionGeneral?.nombreEvento || 'Evento sin nombre';
+    const eventDate = selectedEvent.informacionGeneral?.fechaEvento;
+    
+    if (eventDate) {
+      try {
+        // Parsear la fecha como local para evitar problemas de timezone
+        const [year, month, day] = eventDate.split('-');
+        const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+        const dayNum = date.getDate();
+        const monthName = date.toLocaleDateString('es-CL', { month: 'short' });
+        const yearNum = date.getFullYear();
+        const formattedDate = `${dayNum} de ${monthName} de ${yearNum}`;
+        return `${eventName} / ${formattedDate}`;
+      } catch (error) {
+        console.error('Error formatting selected event date:', error);
+        return eventName;
       }
     }
-  ];
+    
+    return eventName;
+  };
 
-  const selectedEvent = eventosDisponibles.find(e => e.id === selectedEventId);
-  const eventData = selectedEvent?.data || {};
+  // Componente Header limpio con Material-UI
+  const Header = () => (
+    <Box sx={{
+      width: '100%',
+      bgcolor: '#1B2735',
+      boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.15)'
+    }}>
 
-  const productosAgendables = [
-    { tipo: 'Ticket', cuposTotal: 600, cuposUsados: 260, cuposValidados: 220, cuposSinUsar: 115, anulados: 5 },
-    { tipo: 'Parking', cuposTotal: 260, cuposUsados: 170, cuposValidados: 100, cuposSinUsar: 40, anulados: null },
-    { tipo: 'Inflables', cuposTotal: 6, cuposUsados: 3, cuposValidados: 2, cuposSinUsar: 1, anulados: null },
-    { tipo: 'Reposera', cuposTotal: 79, cuposUsados: 35, cuposValidados: 30, cuposSinUsar: 14, anulados: null }
-  ];
+      <Box sx={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        px: 3,
+        py: 2
+      }}>
 
-  const historialEventos = [
-    { cliente: 'British Royal School', rut: '96.123.456-7', nombre: 'Juan Pérez', correo: 'perez@british.cl', fecha: '01/07/2025' },
-    { cliente: 'British Royal School', rut: '96.123.456-7', nombre: 'Juan Pérez', correo: 'perez@british.cl', fecha: '05/06/2025' },
-    { cliente: 'British Royal School', rut: '96.123.456-7', nombre: 'Juan Pérez', correo: 'perez@british.cl', fecha: '10/03/2025' },
-    { cliente: 'British Royal School', rut: '96.123.456-7', nombre: 'Juan Pérez', correo: 'perez@british.cl', fecha: '01/07/2024' }
-  ];
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+          <Link href="/" style={{ textDecoration: 'none' }}>
+            <Box sx={{ 
+              display: 'flex',
+              alignItems: 'center',
+              cursor: 'pointer',
+              '&:hover': {
+                opacity: 0.8
+              }
+            }}>
+              <img 
+                src="/vibepass.svg" 
+                alt="VibePass" 
+                style={{ 
+                  height: '32px', 
+                  width: 'auto'
+                }} 
+              />
+            </Box>
+          </Link>
+          
 
-  const miembros = [
-    { id: 1, nombre: 'José Ortiz', rut: '17.568.240-k', correo: 'Jose@gmail.com', fecha: '20/05/2025', rol: 'Administracion', qr: false },
-    { id: 2, nombre: 'María Muñoz', rut: '19.567.281-1', correo: 'Maria@gmail.com', fecha: '15/10/2024', rol: 'Organizadores', qr: false }
-  ];
+          <Tabs 
+            value={activeView} 
+            onChange={(e, newValue) => setActiveView(newValue)}
+            sx={{
+              '& .MuiTab-root': {
+                color: '#B0BEC5',
+                textTransform: 'none',
+                fontWeight: 500,
+                minHeight: '48px',
+                '&.Mui-selected': {
+                  color: 'white',
+                  bgcolor: 'rgba(255, 255, 255, 0.1)',
+                  borderRadius: '8px'
+                }
+              },
+              '& .MuiTabs-indicator': {
+                display: 'none'
+              }
+            }}
+          >
+            <Tab 
+              value="dashboard" 
+              label={
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <DashboardIcon fontSize="small" />
+                  Dashboard
+                </Box>
+              }
+            />
+            <Tab 
+              value="usuarios" 
+              label={
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <PeopleIcon fontSize="small" />
+                  Usuarios
+                </Box>
+              }
+            />
+            <Tab 
+              value="inventario" 
+              label={
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <InventoryIcon fontSize="small" />
+                  Inventario
+                </Box>
+              }
+            />
+          </Tabs>
+        </Box>
 
-  const inventarioItems = [
-    { categoria: 'Tickets', items: [
-      { nombre: 'NIÑOS - MENOS 1.30 MT.', precio: 7900, sku: 'Ent003', stock: 0, estado: 'agotado' },
-      { nombre: 'ADULTOS', precio: 5600, sku: 'Ent002', stock: 'Agotado', estado: 'agotado' }
-    ]},
-    { categoria: 'Alimento', items: [
-      { nombre: 'Snack', precio: 700, sku: 'Sna001', stock: 1000 },
-      { nombre: 'Hamburguesa', precio: 1000, sku: 'Ham001', stock: 1000 },
-      { nombre: 'Completo', precio: 1500, sku: 'Com001', stock: 1000 }
-    ]},
-    { categoria: 'Agendables', items: [
-      { nombre: 'Reposera', precio: 500, sku: 'Rep001', stock: 1000 }
-    ]}
-  ];
 
-  // Navbar Component
-  const Navbar = () => (
-    <nav className="bg-slate-700 text-white">
-      <div className="px-4 py-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-6">
-            <div className="text-blue-400 text-xl">💎</div>
-            <div className="flex space-x-1">
-              <button
-                onClick={() => {
-                  setActiveView('dashboard');
-                  setShowAddInventoryForm(false);
-                  setShowAddUserForm(false);
-                }}
-                className={`px-4 py-2 rounded-md text-sm font-medium ${
-                  activeView === 'dashboard' 
-                    ? 'bg-slate-500 text-white' 
-                    : 'text-gray-300 hover:bg-slate-600 hover:text-white'
-                }`}
-              >
-                📊 Dashboard
-              </button>
-              <button
-                onClick={() => {
-                  setActiveView('buscar');
-                  setShowAddInventoryForm(false);
-                  setShowAddUserForm(false);
-                }}
-                className={`px-4 py-2 rounded-md text-sm font-medium ${
-                  activeView === 'buscar' 
-                    ? 'bg-slate-500 text-white' 
-                    : 'text-gray-300 hover:bg-slate-600 hover:text-white'
-                }`}
-              >
-                🔍 Busca Ticket
-              </button>
-              <button
-                onClick={() => {
-                  setActiveView('inventario');
-                  setShowAddInventoryForm(false);
-                  setShowAddUserForm(false);
-                }}
-                className={`px-4 py-2 rounded-md text-sm font-medium ${
-                  activeView === 'inventario' 
-                    ? 'bg-slate-500 text-white' 
-                    : 'text-gray-300 hover:bg-slate-600 hover:text-white'
-                }`}
-              >
-                📦 Inventario
-              </button>
-            </div>
-          </div>
-          <div className="flex items-center space-x-4">
-            <Search className="w-5 h-5 cursor-pointer text-gray-300 hover:text-white" />
-            <Bell className="w-5 h-5 cursor-pointer text-gray-300 hover:text-white" />
-            <div className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-gray-400 rounded-full"></div>
-              <div className="text-sm">
-                <div className="font-medium text-white">José Ortiz</div>
-                <div className="text-gray-300 text-xs">Administrador</div>
-              </div>
-            </div>
-            <Menu className="w-5 h-5 cursor-pointer text-gray-300 hover:text-white" />
-          </div>
-        </div>
-      </div>
-    </nav>
+        <Stack direction="row" alignItems="center" spacing={2}>
+          <IconButton sx={{ 
+            color: 'white',
+            '&:hover': {
+              backgroundColor: 'rgba(255, 255, 255, 0.1)'
+            }
+          }}>
+            <SearchIcon />
+          </IconButton>
+
+          <IconButton sx={{ 
+            color: 'white',
+            '&:hover': {
+              backgroundColor: 'rgba(255, 255, 255, 0.1)'
+            }
+          }}>
+            <NotificationsIcon />
+          </IconButton>
+
+          <Stack direction="row" alignItems="center" spacing={1.5} sx={{ ml: 2 }}>
+            <Avatar 
+              sx={{ 
+                width: 40, 
+                height: 40,
+                bgcolor: '#00BCD4',
+                fontSize: '16px',
+                fontWeight: 600
+              }}
+            >
+              JO
+            </Avatar>
+            <Box>
+              <Typography sx={{
+                color: 'white',
+                fontSize: '14px',
+                fontWeight: 600,
+                lineHeight: 1.2
+              }}>
+                José Ortiz
+              </Typography>
+              <Typography sx={{
+                color: '#B0BEC5',
+                fontSize: '12px',
+                lineHeight: 1.2
+              }}>
+                Administrador
+              </Typography>
+            </Box>
+          </Stack>
+
+          <IconButton sx={{ 
+            color: 'white',
+            ml: 1,
+            '&:hover': {
+              backgroundColor: 'rgba(255, 255, 255, 0.1)'
+            }
+          }}>
+            <MenuIcon />
+          </IconButton>
+        </Stack>
+      </Box>
+    </Box>
   );
 
-  // Event Selector Component
+  // Componente Event Selector (debajo del header) - Versión simplificada
   const EventSelector = () => (
-    <div className="bg-gray-100 px-6 py-4 border-b border-gray-200">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-4">
-          <h1 className="text-gray-600 text-lg font-normal">
-            {showAddInventoryForm ? 'Añadir inventario' : 
-             showAddUserForm ? 'Nuevo rol de usuario' : 
-             `Evento - "${selectedEvent?.nombre}"`}
-          </h1>
-        </div>
-        {activeView === 'inventario' && !showAddInventoryForm && !showAddUserForm && (
-          <div className="text-red-500 text-sm font-medium">
-            ⚠️ Últimas unidades - Revisar inventario
-          </div>
-        )}
-        <div className="relative">
-          <select 
+    <Box sx={{
+      width: '100%',
+      bgcolor: '#F5F7FA',
+      borderBottom: '1px solid #E5E7EB',
+      px: 3,
+      py: 2
+    }}>
+      <Box sx={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        maxWidth: '1200px',
+        mx: 'auto'
+      }}>
+
+        <Typography sx={{
+          fontSize: '18px',
+          fontWeight: 600,
+          color: '#374151'
+        }}>
+          Evento - "{getSelectedEventDisplayName()}"
+        </Typography>
+
+
+        <Box sx={{ 
+          minWidth: 250,
+          height: 40,
+          backgroundColor: 'transparent',
+          borderRadius: '8px',
+          display: 'flex',
+          alignItems: 'center',
+          px: 2,
+          cursor: 'pointer',
+          position: 'relative'
+        }}>
+          <FormControl fullWidth>
+            <Select
             value={selectedEventId}
             onChange={(e) => setSelectedEventId(e.target.value)}
-            className="bg-red-500 text-white px-3 py-1 rounded text-sm appearance-none cursor-pointer pr-8 font-medium"
-          >
-            {eventosDisponibles.map(evento => (
-              <option key={evento.id} value={evento.id} className="bg-white text-black">
-                {evento.cliente}
-              </option>
-            ))}
-          </select>
-          <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 w-4 h-4 text-white pointer-events-none" />
-        </div>
-      </div>
-    </div>
-  );
-
-  // Add User Form Component
-  const AddUserForm = () => (
-    <div className="p-6 bg-gray-50 min-h-screen">
-      <div className="mb-6">
-        <p className="text-gray-600 text-sm">
-          Completa la información y define nivel de acceso en la plataforma
-        </p>
-      </div>
-
-      <div className="bg-white rounded-lg border shadow-sm">
-        <div className="bg-blue-500 text-white px-4 py-3 rounded-t-lg">
-          <h3 className="text-sm font-medium">Datos del Organizador</h3>
-        </div>
-        
-        <div className="p-6 space-y-6">
-          {/* Nombre completo del usuario */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Nombre completo del usuario
-            </label>
-            <input
-              type="text"
-              placeholder="Juan Pérez"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            />
-          </div>
-
-          {/* Correo electrónico */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Correo electrónico
-            </label>
-            <input
-              type="email"
-              placeholder="camila@colegio.cl"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            />
-          </div>
-
-          {/* RUT o ID */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              RUT o ID
-            </label>
-            <input
-              type="text"
-              placeholder="12.345.678-9"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            />
-          </div>
-
-          {/* Teléfono de contacto */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Teléfono de contacto
-            </label>
-            <input
-              type="tel"
-              placeholder="+56 9 1234 5678"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            />
-          </div>
-
-          {/* Seleccionar rol */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Seleccionar rol
-            </label>
-            <select className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-              <option>Administrador</option>
-              <option>Organizador</option>
-              <option>Validador</option>
-              <option>Comprador</option>
-            </select>
-          </div>
-        </div>
-
-        {/* Botón Enviar acceso */}
-        <div className="px-6 py-4 bg-gray-50 rounded-b-lg">
-          <button className="bg-blue-500 text-white px-6 py-2 rounded text-sm font-medium hover:bg-blue-600 transition-colors flex items-center">
-            📧 Enviar acceso
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-  const AddInventoryForm = () => (
-    <div className="p-6 bg-gray-50 min-h-screen">
-      <div className="mb-6">
-        <p className="text-gray-600 text-sm">
-          Completa la siguiente información para registrar un nuevo producto
-        </p>
-      </div>
-
-      <div className="bg-white rounded-lg border shadow-sm">
-        <div className="bg-blue-500 text-white px-4 py-3 rounded-t-lg">
-          <h3 className="text-sm font-medium">Formulario de producto</h3>
-        </div>
-        
-        <div className="p-6 space-y-6">
-          <div className="flex justify-end">
-            <span className="text-green-600 text-sm font-medium flex items-center">
-              Producto agregado correctamente <span className="ml-1 text-green-500">●</span>
-            </span>
-          </div>
-
-          {/* Nombre del producto */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Nombre del producto
-            </label>
-            <input
-              type="text"
-              defaultValue="Hamburguesa simple"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            />
-          </div>
-
-          {/* Categoría */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Categoría
-            </label>
-            <select className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-              <option>Selecciona una categoría</option>
-              <option>Alimento</option>
-              <option>Bebida</option>
-              <option>Tickets</option>
-              <option>Agendables</option>
-            </select>
-          </div>
-
-          {/* Descripción */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Descripción
-            </label>
-            <textarea
-              defaultValue="Hamburguesa con pan, carne y queso cheddar"
-              rows={3}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
-            />
-          </div>
-
-          {/* SKU o Código interno */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              SKU o Código interno
-            </label>
-            <div className="relative">
-              <input
-                type="text"
-                defaultValue="HAM-001"
-                className="w-full px-3 py-2 border border-red-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500"
-              />
-              <div className="mt-1 flex items-center text-red-500 text-xs">
-                <span className="mr-1">⚠</span>
-                <span>Este código ya está en uso. Por favor, asigna uno diferente.</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Precio de venta */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Precio de venta (CLP)
-            </label>
-            <input
-              type="text"
-              defaultValue="$2.500"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            />
-          </div>
-
-          {/* Stock inicial disponible */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Stock inicial disponible
-            </label>
-            <input
-              type="text"
-              defaultValue="100 unidades"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            />
-          </div>
-
-          {/* Imagen del producto */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Imagen del producto
-            </label>
-            <div className="border-2 border-dashed border-gray-300 rounded-lg p-12 text-center hover:border-gray-400 transition-colors">
-              <div className="text-gray-500 text-sm">
-                <span className="text-blue-500 underline cursor-pointer hover:text-blue-600">(Adjuntar archivo)</span>
-                <span className="ml-2">📎</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Botones */}
-        <div className="px-6 py-4 bg-gray-50 rounded-b-lg flex space-x-3">
-          <button 
-            onClick={() => setShowAddInventoryForm(false)}
-            className="px-4 py-2 border border-gray-300 rounded text-sm text-gray-700 hover:bg-gray-100 font-medium transition-colors"
-          >
-            Cancelar
-          </button>
-          <button className="px-4 py-2 bg-gray-400 text-white rounded text-sm font-medium cursor-not-allowed">
-            Guardar borrador
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-
-  // Inventario View
-  const InventarioView = () => (
-    <div className="p-6 bg-gray-50 min-h-screen">
-      {/* Tabs */}
-      <div className="mb-6 flex items-center justify-between">
-        <div className="flex space-x-1 bg-white rounded-lg p-1 inline-flex border shadow-sm">
-          <button className="bg-blue-500 text-white px-4 py-2 rounded text-sm font-medium">Todos</button>
-          <button className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded text-sm font-medium">Activos</button>
-          <button className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded text-sm font-medium">Programados</button>
-          <button className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded text-sm font-medium">Pasados</button>
-        </div>
-        <button 
-          onClick={() => setShowAddInventoryForm(true)}
-          className="bg-blue-500 text-white px-4 py-2 rounded text-sm hover:bg-blue-600 font-medium transition-colors"
-        >
-          📦 Añadir inventario
-        </button>
-      </div>
-
-      <div className="mb-4 flex items-center justify-between">
-        <div className="flex items-center space-x-3">
-          <span className="w-3 h-3 bg-green-500 rounded-full"></span>
-          <span className="text-sm font-medium text-gray-700">Inventario activo</span>
-        </div>
-        
-        {/* Event Date Selector - Moved to right */}
-        <div className="flex items-center space-x-2">
-          <span className="text-sm text-gray-600">Seleccionar fecha de evento</span>
-          <select className="px-3 py-1 border border-gray-300 rounded text-sm bg-white focus:border-blue-500 focus:outline-none">
-            <option>A May 20, 2025</option>
-          </select>
-        </div>
-      </div>
-
-      {/* Inventory Items */}
-      <div className="space-y-4">
-        {inventarioItems.map((categoria, catIndex) => (
-          <div key={catIndex}>
-            <h3 className="text-base font-medium mb-3 text-gray-900">{categoria.categoria}</h3>
-            <div className="space-y-2">
-              {categoria.items.map((item, itemIndex) => (
-                <div key={itemIndex} className="bg-white p-4 rounded-lg border shadow-sm flex items-center justify-between">
-                  <div className="flex-1">
-                    <div className="font-medium text-sm text-gray-900">{item.nombre}</div>
-                    <div className="text-gray-600 text-sm">${item.precio.toLocaleString()}</div>
-                    <span className="bg-gray-200 text-gray-700 px-2 py-1 rounded text-xs mt-1 inline-block font-medium">
-                      Casa matriz
-                    </span>
-                  </div>
+              disabled={eventsLoading || events.length === 0}
+              variant="standard"
+              disableUnderline
+              sx={{
+                color: '#374151 !important',
+                fontSize: '14px',
+                fontWeight: 600,
+                '& .MuiSelect-select': {
+                  color: '#374151 !important',
+                  backgroundColor: 'transparent !important',
+                  padding: '8px 30px 8px 0 !important',
+                  textAlign: 'right !important'
+                },
+                '& .MuiSelect-icon': {
+                  color: '#374151 !important'
+                },
+                '& .MuiInputBase-input': {
+                  color: '#374151 !important',
+                  textAlign: 'right !important'
+                },
+                '&:before': {
+                  borderBottom: 'none !important'
+                },
+                '&:after': {
+                  borderBottom: 'none !important'
+                },
+                '&:hover:not(.Mui-disabled):before': {
+                  borderBottom: 'none !important'
+                }
+              }}
+              IconComponent={KeyboardArrowDownIcon}
+            >
+              {eventsLoading ? (
+                <MenuItem disabled>
+                  <Typography sx={{ color: '#6B7280' }}>
+                    Cargando eventos...
+                  </Typography>
+                </MenuItem>
+              ) : events.length === 0 ? (
+                <MenuItem disabled>
+                  <Typography sx={{ color: '#6B7280' }}>
+                    No hay eventos disponibles
+                  </Typography>
+                </MenuItem>
+              ) : (
+                events.map((event) => {
+                  const eventName = event.informacionGeneral?.nombreEvento || 'Evento sin nombre';
+                  const eventDate = event.informacionGeneral?.fechaEvento;
                   
-                  <div className="flex items-center space-x-6">
-                    <div className="text-center">
-                      <div className="text-xs text-gray-600 mb-1 font-medium">Sku</div>
-                      <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-sm font-medium">
-                        {item.sku}
-                      </span>
-                    </div>
-                    
-                    <div className="text-center">
-                      <div className="text-xs text-gray-600 mb-1 font-medium">Stock</div>
-                      {item.estado === 'agotado' ? (
-                        <span className="bg-red-100 text-red-800 px-2 py-1 rounded text-sm font-medium">
-                          Agotado
-                        </span>
-                      ) : (
-                        <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-sm font-medium">
-                          📦 {item.stock}
-                        </span>
-                      )}
-                    </div>
-                    
-                    {item.estado === 'agotado' && (
-                      <div className="text-orange-600 text-sm font-medium">⚠️ Últimas unidades (1)</div>
-                    )}
-                    
-                    <button className="bg-blue-500 text-white px-4 py-2 rounded text-sm hover:bg-blue-600 font-medium transition-colors">
-                      Editar
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
+                  let formattedDate = '';
+                  if (eventDate) {
+                    try {
+                      // Parsear la fecha como local para evitar problemas de timezone
+                      const [year, month, day] = eventDate.split('-');
+                      const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+                      const dayNum = date.getDate();
+                      const monthName = date.toLocaleDateString('es-CL', { month: 'short' });
+                      const yearNum = date.getFullYear();
+                      formattedDate = `${dayNum} de ${monthName} de ${yearNum}`;
+                    } catch (error) {
+                      console.error('Error formatting date:', error);
+                    }
+                  }
+                  
+                  const displayText = formattedDate ? `${eventName} / ${formattedDate}` : eventName;
+                  
+                  return (
+                    <MenuItem 
+                      key={event.id} 
+                      value={event.id}
+                      sx={{
+                        '&:hover': {
+                          bgcolor: 'rgba(239, 68, 68, 0.1)'
+                        }
+                      }}
+                    >
+                      {displayText}
+                    </MenuItem>
+                  );
+                })
+              )}
+            </Select>
+          </FormControl>
+        </Box>
+      </Box>
+    </Box>
   );
 
-  // Dashboard View
-  const DashboardView = () => (
-    <div className="p-6 bg-gray-50 min-h-screen">
-      <div className="mb-6 flex items-center justify-between">
-        <div className="flex items-center space-x-3">
-          <span className="w-3 h-3 bg-green-500 rounded-full"></span>
-          <span className="text-sm font-medium text-gray-700">Evento activo</span>
-        </div>
-        <button className="bg-blue-500 text-white px-4 py-2 rounded text-sm hover:bg-blue-600 font-medium">
-          🔗 Compartir
-        </button>
-      </div>
+  const DashboardView = () => {
+         const [dashboardData, setDashboardData] = useState({
+       totalVentas: 0,
+       ventasDelDia: 0,
+       registradosNuevos: 0,
+       ventasDetalle: [],
+       eventoActivo: 'programado'
+     });
+    const [loading, setLoading] = useState(true);
+    const [inventory, setInventory] = useState([]);
+    const [showAllAgendables, setShowAllAgendables] = useState(false);
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-3 gap-4 mb-6">
-        <div className="bg-white p-4 rounded-lg border shadow-sm">
-          <div className="text-gray-500 text-sm mb-1 font-medium">💰 Total de ventas</div>
-          <div className="text-2xl font-bold text-gray-900">$ {eventData.totalVentas?.toLocaleString() || '0'}</div>
-        </div>
-        <div className="bg-white p-4 rounded-lg border shadow-sm">
-          <div className="text-gray-500 text-sm mb-1 font-medium">📊 Ventas atribuidas del día</div>
-          <div className="text-2xl font-bold text-gray-900">$ {eventData.ventasAtribuidas?.toLocaleString() || '0'}</div>
-        </div>
-        <div className="bg-white p-4 rounded-lg border shadow-sm">
-          <div className="text-gray-500 text-sm mb-1 font-medium">👥 Registrados nuevos</div>
-          <div className="text-2xl font-bold text-gray-900">{eventData.registradosNuevos || '0'}</div>
-        </div>
-      </div>
+    useEffect(() => {
+      if (selectedEventId) {
+        fetchDashboardData();
+      }
+    }, [selectedEventId]);
 
-      <div className="grid grid-cols-2 gap-6">
-        {/* Ventas del día */}
-        <div className="bg-white p-4 rounded-lg border shadow-sm">
-          <h3 className="text-base font-medium mb-4 text-gray-900">📊 Historial</h3>
-          <div className="space-y-2">
-            <div className="text-sm font-medium text-gray-700">Ventas del día</div>
-            {(eventData.ventasDelDia || []).map((venta, index) => (
-              <div key={index} className="flex justify-between items-center py-1">
-                <div className="flex items-center space-x-2">
-                  <div className="w-2 h-2 bg-gray-800 rounded-full"></div>
-                  <span className="text-sm text-gray-700">{venta.item}</span>
-                </div>
-                <span className="text-sm font-medium text-gray-900">$ {venta.amount.toLocaleString()}</span>
-              </div>
-            ))}
-            <button className="text-blue-500 text-sm mt-2 hover:text-blue-600">Ver todas las ventas del día ↓</button>
-          </div>
-        </div>
+    const fetchDashboardData = async () => {
+      try {
+        setLoading(true);
+        
+        const usersResponse = await fetch(`http://localhost:3001/api/users?eventoId=${selectedEventId}`);
+        const usersData = await usersResponse.json();
+        
+        const users = Array.isArray(usersData) ? usersData : (usersData.data?.users || usersData.data?.items || usersData.users || usersData.data || []);
+        
+        const inventoryResponse = await fetch(`http://localhost:3001/api/inventory?eventoId=${selectedEventId}`);
+        const inventoryData = await inventoryResponse.json();
+        
+        const inventoryArray = Array.isArray(inventoryData) ? inventoryData : (inventoryData.data?.items || inventoryData.inventory || inventoryData.data || []);
+        setInventory(inventoryArray);
+        
+        const registradosNuevos = users.length;
+        
+        const totalVentas = inventoryArray.reduce((total, item) => {
+          return total + (item.precioVenta * (item.stockInicial - item.stockActual));
+        }, 0);
+        
+        const ventasDelDia = Math.floor(totalVentas * 0.9);
+        
+        const ventasDetalle = inventoryArray.reduce((acc, item) => {
+          const ventasItem = item.precioVenta * (item.stockInicial - item.stockActual);
+          const categoria = item.categoria;
+          
+          if (acc[categoria]) {
+            acc[categoria] += ventasItem;
+          } else {
+            acc[categoria] = ventasItem;
+          }
+          
+          return acc;
+        }, {});
+        
+        const ventasDetalleArray = Object.entries(ventasDetalle).map(([categoria, monto]) => ({
+          categoria,
+          monto
+        }));
+        
+        // Determinar el estado del evento basándose en la fecha
+        let eventoActivo = true;
+        if (selectedEvent && selectedEvent.informacionGeneral?.fechaEvento) {
+          const eventDate = new Date(selectedEvent.informacionGeneral.fechaEvento);
+          const today = new Date();
+          today.setHours(0, 0, 0, 0); // Resetear horas para comparar solo fechas
+          eventDate.setHours(0, 0, 0, 0);
+          
+          if (eventDate > today) {
+            eventoActivo = 'programado'; // Evento futuro
+          } else if (eventDate < today) {
+            eventoActivo = 'realizado'; // Evento pasado
+          } else {
+            eventoActivo = 'activo'; // Evento hoy
+          }
+        }
+         
+         setDashboardData({
+           totalVentas,
+           ventasDelDia,
+           registradosNuevos,
+           ventasDetalle: ventasDetalleArray,
+           eventoActivo
+         });
+      } catch (error) {
+        console.error('Error fetching dashboard data:', error);
+                 setDashboardData({
+           totalVentas: 0,
+           ventasDelDia: 0,
+           registradosNuevos: 0,
+           ventasDetalle: [],
+           eventoActivo: 'programado'
+         });
+      } finally {
+        setLoading(false);
+      }
+    };
 
-        {/* Calendar */}
-        <div className="bg-white p-4 rounded-lg border shadow-sm">
-          <h3 className="text-base font-medium mb-4 text-gray-900">📅 Calendario</h3>
-          <div className="text-center mb-3">
-            <div className="font-medium text-sm text-gray-700">Mayo de 2025</div>
-          </div>
-          <div className="grid grid-cols-7 gap-1 text-xs">
-            {['Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab', 'Dom'].map(day => (
-              <div key={day} className="text-center font-medium text-gray-500 p-1">{day}</div>
-            ))}
-            {Array.from({length: 31}, (_, i) => i + 1).map(day => (
-              <div key={day} className={`text-center p-1 cursor-pointer hover:bg-blue-100 rounded ${day === 20 ? 'bg-blue-500 text-white rounded' : 'text-gray-700'}`}>
-                {day}
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
+    const formatCurrency = (amount) => {
+      return new Intl.NumberFormat('es-CL', {
+        style: 'currency',
+        currency: 'CLP',
+        minimumFractionDigits: 0
+      }).format(amount);
+    };
 
-      {/* Productos Agendables */}
-      <div className="mt-6 bg-white p-4 rounded-lg border shadow-sm">
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="text-base font-medium text-gray-900">📋 Productos agendables</h3>
-          <button className="bg-blue-500 text-white px-4 py-2 rounded text-sm hover:bg-blue-600 font-medium">
-            ➕ Crear agendamiento
-          </button>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b bg-gray-50">
-                <th className="text-left py-2 px-3 font-medium text-gray-700">Tipo</th>
-                <th className="text-left py-2 px-3 font-medium text-gray-700">Cupos en total</th>
-                <th className="text-left py-2 px-3 font-medium text-gray-700">Cupos usados</th>
-                <th className="text-left py-2 px-3 font-medium text-gray-700">Cupos Validados</th>
-                <th className="text-left py-2 px-3 font-medium text-gray-700">Cupos sin usar</th>
-                <th className="text-left py-2 px-3 font-medium text-gray-700">Anulados</th>
-                <th className="text-left py-2 px-3"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {productosAgendables.map((producto, index) => (
-                <tr key={index} className="border-b hover:bg-gray-50">
-                  <td className="py-2 px-3 text-gray-900">{producto.tipo}</td>
-                  <td className="py-2 px-3 text-gray-700">{producto.cuposTotal}</td>
-                  <td className="py-2 px-3">
-                    <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs font-medium">
-                      {producto.cuposUsados}
-                    </span>
-                  </td>
-                  <td className="py-2 px-3">
-                    <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs font-medium">
-                      {producto.cuposValidados}
-                    </span>
-                  </td>
-                  <td className="py-2 px-3 text-gray-700">{producto.cuposSinUsar}</td>
-                  <td className="py-2 px-3 text-gray-700">{producto.anulados || '-'}</td>
-                  <td className="py-2 px-3">
-                    <button className="bg-blue-500 text-white px-3 py-1 rounded text-xs hover:bg-blue-600 font-medium">
-                      Editar
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          <button className="text-blue-500 text-sm mt-2 hover:text-blue-600">Ver todos los agendables ↓</button>
-        </div>
-      </div>
+    return (
+      <Box sx={{ 
+        bgcolor: '#F5F7FA', 
+        minHeight: 'calc(100vh - 80px)',
+        p: 4
+      }}>
 
-      {/* Historial eventos pasados */}
-      <div className="mt-6 bg-white p-4 rounded-lg border shadow-sm">
-        <h3 className="text-base font-medium mb-4 text-gray-900">📋 Historial eventos pasados</h3>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b bg-gray-50">
-                <th className="text-left py-2 px-3 font-medium text-gray-700">Cliente</th>
-                <th className="text-left py-2 px-3 font-medium text-gray-700">Rut de empresa</th>
-                <th className="text-left py-2 px-3 font-medium text-gray-700">Nombre</th>
-                <th className="text-left py-2 px-3 font-medium text-gray-700">Correo</th>
-                <th className="text-left py-2 px-3 font-medium text-gray-700">Fecha</th>
-                <th className="text-left py-2 px-3"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {historialEventos.map((evento, index) => (
-                <tr key={index} className="border-b hover:bg-gray-50">
-                  <td className="py-2 px-3 text-gray-900">{evento.cliente}</td>
-                  <td className="py-2 px-3 text-gray-700">{evento.rut}</td>
-                  <td className="py-2 px-3 text-gray-700">{evento.nombre}</td>
-                  <td className="py-2 px-3 text-gray-700">{evento.correo}</td>
-                  <td className="py-2 px-3 text-gray-700">{evento.fecha}</td>
-                  <td className="py-2 px-3">
-                    <button className="bg-blue-500 text-white px-3 py-1 rounded text-xs hover:bg-blue-600 font-medium">
-                      Ver informe
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          <button className="text-blue-500 text-sm mt-2 hover:text-blue-600">Ver todos los eventos ↓</button>
-        </div>
-      </div>
-    </div>
-  );
+        <Box sx={{ mb: 4 }}>
+          <Stack direction="row" alignItems="center" spacing={2}>
+            <Box sx={{ 
+              width: 12, 
+              height: 12, 
+              borderRadius: '50%', 
+              bgcolor: dashboardData.eventoActivo === 'activo' ? '#10B981' : 
+                      dashboardData.eventoActivo === 'programado' ? '#3B82F6' : '#6B7280'
+            }} />
+            <Typography variant="h6" sx={{ color: '#374151', fontWeight: 600 }}>
+              {dashboardData.eventoActivo === 'activo' ? 'Evento activo' : 
+               dashboardData.eventoActivo === 'programado' ? 'Evento programado' : 'Evento realizado'}
+            </Typography>
+            <Box sx={{ flexGrow: 1 }} />
+            <Button 
+              variant="contained" 
+              startIcon={<ShareIcon />}
+              sx={{ 
+                background: 'linear-gradient(135deg, #1E293B 0%, #334155 100%) !important',
+                '&:hover': { 
+                  background: 'linear-gradient(135deg, #0F172A 0%, #1E293B 100%) !important'
+                },
+                textTransform: 'none',
+                borderRadius: '8px',
+                boxShadow: '0px 2px 4px rgba(30, 41, 59, 0.3)',
+                color: 'white !important',
+                fontWeight: 500,
+                px: 3,
+                py: 1,
+                '&.MuiButton-root': {
+                  background: 'linear-gradient(135deg, #1E293B 0%, #334155 100%) !important',
+                  '&:hover': {
+                    background: 'linear-gradient(135deg, #0F172A 0%, #1E293B 100%) !important'
+                  }
+                }
+              }}
+            >
+              Compartir
+            </Button>
+          </Stack>
+        </Box>
 
-  // Buscar Ticket View
-  const BuscarTicketView = () => (
-    <div className="p-6 bg-gray-50 min-h-screen">
-      {/* Tabs */}
-      <div className="mb-6">
-        <div className="flex space-x-1 bg-white rounded-lg p-1 inline-flex border shadow-sm">
-          <button className="bg-blue-500 text-white px-4 py-2 rounded text-sm font-medium">Todos</button>
-          <button className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded text-sm font-medium">Organizadores</button>
-          <button className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded text-sm font-medium">Validadores</button>
-          <button className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded text-sm font-medium">Visitantes</button>
-        </div>
-        <button 
-          onClick={() => setShowAddUserForm(true)}
-          className="ml-4 bg-blue-500 text-white px-4 py-2 rounded text-sm hover:bg-blue-600 font-medium transition-colors"
-        >
-          👤 Añadir rol de usuario
-        </button>
-      </div>
 
-      <div className="bg-white rounded-lg border shadow-sm">
-        <div className="p-4 border-b">
-          <div className="flex items-center space-x-2 mb-4">
-            <Users className="w-5 h-5 text-gray-600" />
-            <h3 className="text-base font-medium text-gray-900">Miembros (1000)</h3>
-          </div>
+        <Stack direction="row" spacing={3} sx={{ mb: 4 }}>
 
-          {/* Search */}
-          <div className="flex space-x-4">
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Buscar"
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm bg-gray-50 focus:bg-white focus:border-blue-500 focus:outline-none"
-              />
-            </div>
-            <select className="px-4 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:border-blue-500 focus:outline-none">
-              <option>Buscar por fechas</option>
-            </select>
-          </div>
-        </div>
+          <Paper sx={{ 
+            flex: 1, 
+            p: 3, 
+            borderRadius: '12px',
+            boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.1)'
+          }}>
+            <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
+              <Box>
+                <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1 }}>
+                  <AttachMoneyIcon sx={{ color: '#6B7280', fontSize: '20px' }} />
+                  <Typography variant="body2" sx={{ color: '#6B7280' }}>
+                    Total de ventas
+                  </Typography>
+                </Stack>
+                <Typography variant="h4" sx={{ color: '#374151', fontWeight: 700 }}>
+                  {formatCurrency(dashboardData.totalVentas)}
+                </Typography>
+              </Box>
+            </Stack>
+          </Paper>
 
-        {/* Members Table */}
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b bg-gray-50">
-                <th className="text-left py-3 px-4 font-medium text-gray-700">Cuentas</th>
-                <th className="text-left py-3 px-4 font-medium text-gray-700">Rut</th>
-                <th className="text-left py-3 px-4 font-medium text-gray-700">Correo</th>
-                <th className="text-left py-3 px-4 font-medium text-gray-700">Fecha</th>
-                <th className="text-left py-3 px-4 font-medium text-gray-700">QR</th>
-                <th className="text-left py-3 px-4 font-medium text-gray-700">Rol</th>
-                <th className="text-left py-3 px-4"></th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr className="border-b hover:bg-gray-50">
-                <td className="py-3 px-4">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-8 h-8 bg-gray-400 rounded-full"></div>
-                    <span className="text-gray-900 font-medium">José Ortiz</span>
-                  </div>
-                </td>
-                <td className="py-3 px-4 text-gray-700">17.568.240-k</td>
-                <td className="py-3 px-4 text-gray-700">Jose@gmail.com</td>
-                <td className="py-3 px-4 text-gray-700">20/05/2025</td>
-                <td className="py-3 px-4 text-gray-500">-</td>
-                <td className="py-3 px-4">
-                  <select className="bg-gray-100 px-3 py-1 rounded text-sm border-0 font-medium" defaultValue="Administracion">
-                    <option value="Administracion">Administracion</option>
-                    <option value="Organizadores">Organizadores</option>
-                    <option value="Validadores">Validadores</option>
-                    <option value="Compradores">Compradores</option>
-                  </select>
-                </td>
-                <td className="py-3 px-4">
-                  <button className="text-red-500 text-sm hover:text-red-700 font-medium">Eliminar</button>
-                </td>
-              </tr>
-              <tr className="border-b hover:bg-gray-50">
-                <td className="py-3 px-4">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-8 h-8 bg-gray-400 rounded-full"></div>
-                    <span className="text-gray-900 font-medium">María Muñoz</span>
-                  </div>
-                </td>
-                <td className="py-3 px-4 text-gray-700">19.567.281-1</td>
-                <td className="py-3 px-4 text-gray-700">Maria@gmail.com</td>
-                <td className="py-3 px-4 text-gray-700">15/10/2024</td>
-                <td className="py-3 px-4 text-gray-500">-</td>
-                <td className="py-3 px-4">
-                  <select className="bg-gray-100 px-3 py-1 rounded text-sm border-0 font-medium" defaultValue="Organizadores">
-                    <option value="Administracion">Administracion</option>
-                    <option value="Organizadores">Organizadores</option>
-                    <option value="Validadores">Validadores</option>
-                    <option value="Compradores">Compradores</option>
-                  </select>
-                </td>
-                <td className="py-3 px-4">
-                  <button className="text-red-500 text-sm hover:text-red-700 font-medium">Eliminar</button>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-  );
+
+          <Paper sx={{ 
+            flex: 1, 
+            p: 3, 
+            borderRadius: '12px',
+            boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.1)'
+          }}>
+            <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
+              <Box>
+                <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1 }}>
+                  <DescriptionIcon sx={{ color: '#6B7280', fontSize: '20px' }} />
+                  <Typography variant="body2" sx={{ color: '#6B7280' }}>
+                    Ventas atribuibles del día
+                  </Typography>
+                </Stack>
+                <Typography variant="h4" sx={{ color: '#374151', fontWeight: 700 }}>
+                  {formatCurrency(dashboardData.ventasDelDia)}
+                </Typography>
+              </Box>
+            </Stack>
+          </Paper>
+
+
+          <Paper sx={{ 
+            flex: 1, 
+            p: 3, 
+            borderRadius: '12px',
+            boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.1)'
+          }}>
+            <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
+              <Box>
+                <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1 }}>
+                  <PersonIcon sx={{ color: '#6B7280', fontSize: '20px' }} />
+                  <Typography variant="body2" sx={{ color: '#6B7280' }}>
+                    Usuarios registrados
+                  </Typography>
+                </Stack>
+                <Typography variant="h4" sx={{ color: '#374151', fontWeight: 700 }}>
+                  {dashboardData.registradosNuevos}
+                </Typography>
+              </Box>
+            </Stack>
+          </Paper>
+        </Stack>
+
+
+         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+
+           <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+             <Typography variant="h6" sx={{ color: '#374151', mb: 2, fontWeight: 600 }}>
+               Ventas del día
+             </Typography>
+             <Paper sx={{ 
+               width: 800,
+               height: 320,
+               p: 3, 
+               borderRadius: '12px',
+               boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.1)',
+               display: 'flex',
+               flexDirection: 'column',
+               justifyContent: 'space-between'
+             }}>
+               {dashboardData.ventasDetalle.length > 0 ? (
+                 <Stack spacing={2}>
+                   {dashboardData.ventasDetalle.map((item, index) => (
+                     <Stack key={index} direction="row" justifyContent="space-between" alignItems="center">
+                       <Typography variant="body1" sx={{ color: '#374151' }}>
+                         {item.categoria}
+                       </Typography>
+                       <Typography variant="body1" sx={{ color: '#374151', fontWeight: 600 }}>
+                         {formatCurrency(item.monto)}
+                       </Typography>
+                     </Stack>
+                   ))}
+                 </Stack>
+               ) : (
+                 <Box sx={{ 
+                   display: 'flex', 
+                   flexDirection: 'column',
+                   alignItems: 'center', 
+                   justifyContent: 'center',
+                   flex: 1,
+                   py: 4
+                 }}>
+                   <Typography variant="h6" sx={{ color: '#6B7280', mb: 1, fontWeight: 500 }}>
+                     📊 No hay ventas aún
+                   </Typography>
+                   <Typography variant="body2" sx={{ color: '#9CA3AF', textAlign: 'center' }}>
+                     Las ventas del día aparecerán aquí cuando se registren transacciones
+                   </Typography>
+                 </Box>
+               )}
+               {dashboardData.ventasDetalle.length > 0 && (
+                 <Button 
+                   variant="text" 
+                   endIcon={<KeyboardArrowDownIcon />}
+                   sx={{ 
+                     color: '#6B7280',
+                     textTransform: 'none',
+                     alignSelf: 'center'
+                   }}
+                 >
+                   Ver todas las ventas del día
+                 </Button>
+               )}
+             </Paper>
+           </Box>
+
+
+           <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+             <Typography variant="h6" sx={{ color: '#374151', mb: 2, fontWeight: 600, textAlign: 'center' }}>
+               Calendario
+             </Typography>
+             <Paper sx={{ 
+               width: 337,
+               height: 320,
+               p: 2, 
+               borderRadius: '10px',
+               boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.1)',
+               display: 'flex',
+               flexDirection: 'column'
+             }}>
+               <CalendarComponent selectedEventId={selectedEventId} />
+             </Paper>
+                      </Box>
+         </Box>
+
+
+         <Box sx={{ mt: 4 }}>
+           <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 3 }}>
+             <Typography variant="h6" sx={{ color: '#374151', fontWeight: 600 }}>
+               Productos Agendables
+             </Typography>
+             <Button 
+               variant="contained" 
+               startIcon={<AddIcon />}
+               sx={{ 
+                 background: 'linear-gradient(135deg, #1E293B 0%, #334155 100%) !important',
+                 '&:hover': { 
+                   background: 'linear-gradient(135deg, #0F172A 0%, #1E293B 100%) !important'
+                 },
+                 textTransform: 'none',
+                 borderRadius: '8px',
+                 boxShadow: '0px 2px 4px rgba(30, 41, 59, 0.3)',
+                 color: 'white !important',
+                 fontWeight: 500,
+                 '&.MuiButton-root': {
+                   background: 'linear-gradient(135deg, #1E293B 0%, #334155 100%) !important',
+                   '&:hover': {
+                     background: 'linear-gradient(135deg, #0F172A 0%, #1E293B 100%) !important'
+                   }
+                 }
+               }}
+             >
+               Crear agendamiento
+             </Button>
+           </Stack>
+
+           <Paper sx={{ 
+             p: 3, 
+             borderRadius: '12px',
+             boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.1)'
+           }}>
+             <Box sx={{ 
+               display: 'grid', 
+               gridTemplateColumns: '1fr 1fr 1fr 1fr 1fr 1fr 60px',
+               gap: '16px 24px',
+               alignItems: 'center',
+               mb: 2,
+               pb: 2,
+               borderBottom: '1px solid #E5E7EB',
+               bgcolor: '#F9FAFB',
+               borderRadius: '8px 8px 0 0',
+               px: 2,
+               py: 1.5
+             }}>
+               <Typography variant="body2" sx={{ color: '#6B7280', fontWeight: 600 }}>
+                 Tipo
+               </Typography>
+               <Typography variant="body2" sx={{ color: '#6B7280', fontWeight: 600, textAlign: 'right' }}>
+                 Cupos en total
+               </Typography>
+               <Typography variant="body2" sx={{ color: '#6B7280', fontWeight: 600, textAlign: 'right' }}>
+                 Cupos usados
+               </Typography>
+               <Typography variant="body2" sx={{ color: '#6B7280', fontWeight: 600, textAlign: 'right' }}>
+                 Cupos validados
+               </Typography>
+               <Typography variant="body2" sx={{ color: '#6B7280', fontWeight: 600, textAlign: 'right' }}>
+                 Cupos sin usar
+               </Typography>
+               <Typography variant="body2" sx={{ color: '#6B7280', fontWeight: 600, textAlign: 'right' }}>
+                 Anulados
+               </Typography>
+               <Box></Box>
+             </Box>
+
+
+             {inventory && inventory.length > 0 ? (showAllAgendables ? inventory : inventory.slice(0, 3)).map((item, index) => (
+               <Box key={item.id || index} sx={{ 
+                 display: 'grid', 
+                 gridTemplateColumns: '1fr 1fr 1fr 1fr 1fr 1fr 60px',
+                 gap: '16px 24px',
+                 alignItems: 'center',
+                 py: 2,
+                 borderBottom: index < inventory.length - 1 ? '1px solid #F3F4F6' : 'none'
+               }}>
+                 <Typography variant="body1" sx={{ color: '#374151' }}>
+                   {item.nombreProducto || item.nombre || 'Sin nombre'}
+                 </Typography>
+                 <Typography variant="body1" sx={{ color: '#374151', fontWeight: 600, textAlign: 'right' }}>
+                   {item.stockInicial || 0}
+                 </Typography>
+                 <Typography variant="body1" sx={{ color: '#3B82F6', textDecoration: 'underline', textAlign: 'right' }}>
+                   0
+                 </Typography>
+                 <Typography variant="body1" sx={{ color: '#3B82F6', textDecoration: 'underline', textAlign: 'right' }}>
+                   0
+                 </Typography>
+                 <Typography variant="body1" sx={{ color: '#374151', textAlign: 'right' }}>
+                   {item.stockInicial || 0}
+                 </Typography>
+                 <Typography variant="body1" sx={{ color: '#374151', textAlign: 'right' }}>
+                   0
+                 </Typography>
+                 <IconButton size="small" sx={{ color: '#6B7280' }}>
+                   <EditIcon fontSize="small" />
+                 </IconButton>
+               </Box>
+             )) : (
+               <Box sx={{ 
+                 display: 'flex', 
+                 justifyContent: 'center', 
+                 alignItems: 'center', 
+                 py: 4,
+                 color: '#6B7280'
+               }}>
+                 <Typography variant="body2">
+                   No hay productos agendables disponibles
+                 </Typography>
+               </Box>
+             )}
+
+             {inventory && inventory.length > 3 && (
+               <Button 
+                 variant="text" 
+                 endIcon={showAllAgendables ? <KeyboardArrowDownIcon sx={{ transform: 'rotate(180deg)' }} /> : <KeyboardArrowDownIcon />}
+                 onClick={() => setShowAllAgendables(!showAllAgendables)}
+                 sx={{ 
+                   mt: 2, 
+                   color: '#6B7280',
+                   textTransform: 'none'
+                 }}
+               >
+                 {showAllAgendables ? 'Ver menos' : `Ver todos los agendables (${inventory.length})`}
+               </Button>
+             )}
+           </Paper>
+         </Box>
+
+
+         <Box sx={{ mt: 4 }}>
+           <Stack direction="row" alignItems="center" sx={{ mb: 3 }}>
+             <Typography variant="h6" sx={{ color: '#374151', fontWeight: 600 }}>
+               Historial de eventos pasados
+             </Typography>
+           </Stack>
+
+           <Paper sx={{ 
+             p: 3, 
+             borderRadius: '12px',
+             boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.1)'
+           }}>
+             <Box sx={{ 
+               display: 'grid', 
+               gridTemplateColumns: '1fr 1fr 1fr 1fr 1fr auto',
+               gap: '16px 24px',
+               alignItems: 'center',
+               mb: 2,
+               pb: 2,
+               borderBottom: '1px solid #E5E7EB',
+               bgcolor: '#F9FAFB',
+               borderRadius: '8px 8px 0 0',
+               px: 2,
+               py: 1.5
+             }}>
+               <Typography variant="body2" sx={{ color: '#6B7280', fontWeight: 600 }}>
+                 Cliente
+               </Typography>
+               <Typography variant="body2" sx={{ color: '#6B7280', fontWeight: 600 }}>
+                 Rut de empresa
+               </Typography>
+               <Typography variant="body2" sx={{ color: '#6B7280', fontWeight: 600 }}>
+                 Nombre
+               </Typography>
+               <Typography variant="body2" sx={{ color: '#6B7280', fontWeight: 600 }}>
+                 Correo
+               </Typography>
+               <Typography variant="body2" sx={{ color: '#6B7280', fontWeight: 600 }}>
+                 Fecha
+               </Typography>
+               <Box></Box>
+             </Box>
+
+             <Box sx={{ 
+               display: 'flex', 
+               justifyContent: 'center', 
+               alignItems: 'center', 
+               py: 6,
+               color: '#6B7280'
+             }}>
+               <Typography variant="body1">
+                 No hay registros disponibles
+               </Typography>
+             </Box>
+
+             <Button 
+               variant="text" 
+               endIcon={<KeyboardArrowDownIcon />}
+               sx={{ 
+                 mt: 2, 
+                 color: '#6B7280',
+                 textTransform: 'none'
+               }}
+             >
+               Ver todos los eventos
+             </Button>
+           </Paper>
+         </Box>
+       </Box>
+     );
+   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Navbar />
+    <Box sx={{ minHeight: '100vh', bgcolor: '#F5F7FA' }}>
+      <Header />
       <EventSelector />
+      
       {showAddInventoryForm ? (
-        <AddInventoryForm />
+        <AddInventoryForm 
+          inventoryFormData={inventoryFormData}
+          handleInventoryFormChange={handleInventoryFormChange}
+          onCancel={() => {
+            setShowAddInventoryForm(false);
+            // Limpiar el formulario al cancelar
+            setInventoryFormData({
+              nombreProducto: '',
+              categoria: '',
+              descripcion: '',
+              skuCodigoInterno: '',
+              precioVenta: '',
+              stockInicialDisponible: '',
+              imagenProducto: null
+            });
+          }}
+          selectedEventId={selectedEventId}
+        />
+      ) : showEditInventoryForm ? (
+        <AddInventoryForm 
+          inventoryFormData={inventoryFormData}
+          handleInventoryFormChange={handleInventoryFormChange}
+          createInventory={updateInventory}
+          createInventoryLoading={createInventoryLoading}
+          onCancel={() => {
+            setShowEditInventoryForm(false);
+            setEditingInventory(null);
+            setInventoryFormData({
+              nombreProducto: '',
+              categoria: '',
+              descripcion: '',
+              skuCodigoInterno: '',
+              precioVenta: '',
+              stockInicialDisponible: '',
+              imagenProducto: null
+            });
+          }}
+          isEditing={true}
+          selectedEventId={selectedEventId}
+        />
       ) : showAddUserForm ? (
-        <AddUserForm />
+        <AddUserForm 
+          userFormData={userFormData}
+          handleUserFormChange={handleUserFormChange}
+          createUser={createUser}
+          createUserLoading={createUserLoading}
+          onCancel={() => setShowAddUserForm(false)}
+        />
+      ) : showEditUserForm ? (
+        <AddUserForm 
+          userFormData={userFormData}
+          handleUserFormChange={handleUserFormChange}
+          createUser={updateUser}
+          createUserLoading={createUserLoading}
+          onCancel={() => {
+            setShowEditUserForm(false);
+            setEditingUser(null);
+            setUserFormData({
+              nombreCompleto: '',
+              correoElectronico: '',
+              rutOId: '',
+              telefonoContacto: '',
+              rol: 'Administrador'
+            });
+          }}
+          isEditing={true}
+        />
       ) : (
         <>
           {activeView === 'dashboard' && <DashboardView />}
-          {activeView === 'buscar' && <BuscarTicketView />}
-          {activeView === 'inventario' && <InventarioView />}
+          {activeView === 'usuarios' && <Usuarios onAddUser={() => {
+            // Limpiar el formulario antes de abrirlo
+            setUserFormData({
+              nombreCompleto: '',
+              correoElectronico: '',
+              rutOId: '',
+              telefonoContacto: '',
+              rol: 'Administrador'
+            });
+            setShowAddUserForm(true);
+          }} onEditUser={handleEditUser} selectedEventId={selectedEventId} />}
+          {activeView === 'inventario' && <Inventario onAddInventory={() => {
+            // Limpiar el formulario antes de abrirlo
+            setInventoryFormData({
+              nombreProducto: '',
+              categoria: '',
+              descripcion: '',
+              skuCodigoInterno: '',
+              precioVenta: '',
+              stockInicialDisponible: '',
+              imagenProducto: null
+            });
+            setShowAddInventoryForm(true);
+          }} onEditInventory={handleEditInventory} selectedEventId={selectedEventId} />}
         </>
       )}
-    </div>
+
+
+      <Dialog
+        open={showUserSuccessModal}
+        onClose={() => setShowUserSuccessModal(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle sx={{ textAlign: 'center', color: 'success.main', fontWeight: 600 }}>
+          🎉 ¡Usuario creado exitosamente!
+        </DialogTitle>
+        <DialogContent>
+          <Typography sx={{ textAlign: 'center', color: 'grey.600' }}>
+            El usuario "{createdUserName}" ha sido creado correctamente.
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ justifyContent: 'center', pb: 3 }}>
+          <Button 
+            onClick={() => setShowUserSuccessModal(false)}
+            variant="contained"
+            color="success"
+            size="large"
+            sx={{
+              px: 4,
+              borderRadius: '8px',
+              textTransform: 'none',
+              fontWeight: 500
+            }}
+          >
+            Aceptar
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+
+      <Dialog
+        open={showUserErrorModal}
+        onClose={() => setShowUserErrorModal(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle sx={{ textAlign: 'center', color: 'error.main', fontWeight: 600 }}>
+          ❌ Error al crear usuario
+        </DialogTitle>
+        <DialogContent>
+          <Typography sx={{ textAlign: 'center', color: 'grey.600' }}>
+            {userErrorMessage}
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ justifyContent: 'center', pb: 3 }}>
+          <Button 
+            onClick={() => setShowUserErrorModal(false)}
+            variant="contained"
+            color="error"
+            size="large"
+            sx={{
+              px: 4,
+              borderRadius: '8px',
+              textTransform: 'none',
+              fontWeight: 500
+            }}
+          >
+            Aceptar
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </Box>
   );
 };
 

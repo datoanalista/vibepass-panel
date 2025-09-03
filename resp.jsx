@@ -550,7 +550,7 @@ const EventsOverview = () => {
             onClick={() => setShowCreateEventForm(true)}
             className="bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-600 flex items-center"
           >
-            ⭕ Crear nuevo evento
+            ⭕ Craaear nuevo evento
           </button>
         </div>
       </div>

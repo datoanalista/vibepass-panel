@@ -1,0 +1,162 @@
+/* MUI Override Styles - Para sobrescribir Tailwind */
+
+/* Typography Global */
+.MuiTypography-h4 {
+  font-size: 24px !important;
+  font-weight: 600 !important;
+  color: #374151 !important;
+  font-family: "Inter", "Roboto", "Helvetica", "Arial", sans-serif !important;
+}
+
+.MuiTypography-h6 {
+  font-size: 16px !important;
+  font-weight: 600 !important;
+  color: #374151 !important;
+  font-family: "Inter", "Roboto", "Helvetica", "Arial", sans-serif !important;
+}
+
+.MuiTypography-body1 {
+  font-size: 14px !important;
+  color: #6B7280 !important;
+  font-family: "Inter", "Roboto", "Helvetica", "Arial", sans-serif !important;
+}
+
+/* TextField Styles */
+.MuiOutlinedInput-root {
+  background-color: #ffffff !important;
+  border-radius: 8px !important;
+  font-family: "Inter", "Roboto", "Helvetica", "Arial", sans-serif !important;
+}
+
+.MuiOutlinedInput-notchedOutline {
+  border-color: #E4E8ED !important;
+  border-width: 1px !important;
+}
+
+.MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline {
+  border-color: #9AA5B1 !important;
+}
+
+.MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline {
+  border-color: #2E7CE4 !important;
+  border-width: 2px !important;
+}
+
+.MuiInputLabel-root {
+  color: #6B7280 !important;
+  font-size: 14px !important;
+  font-weight: 500 !important;
+  font-family: "Inter", "Roboto", "Helvetica", "Arial", sans-serif !important;
+}
+
+.MuiInputLabel-root.Mui-focused {
+  color: #2E7CE4 !important;
+}
+
+.MuiOutlinedInput-input {
+  font-family: "Inter", "Roboto", "Helvetica", "Arial", sans-serif !important;
+  font-size: 14px !important;
+  padding: 12px 14px !important;
+}
+
+/* Button Styles */
+.MuiButton-root {
+  border-radius: 8px !important;
+  text-transform: none !important;
+  font-weight: 500 !important;
+  font-size: 14px !important;
+  box-shadow: none !important;
+  font-family: "Inter", "Roboto", "Helvetica", "Arial", sans-serif !important;
+}
+
+.MuiButton-root:hover {
+  box-shadow: 0px 2px 8px rgba(46, 124, 228, 0.15) !important;
+}
+
+.MuiButton-containedPrimary {
+  background: linear-gradient(135deg, #2E7CE4 0%, #4A90E2 100%) !important;
+  color: white !important;
+}
+
+.MuiButton-containedPrimary:hover {
+  background: linear-gradient(135deg, #1565C0 0%, #2E7CE4 100%) !important;
+}
+
+/* Card Styles */
+.MuiCard-root {
+  border-radius: 12px !important;
+  box-shadow: 0px 2px 12px rgba(0, 0, 0, 0.08) !important;
+  border: 1px solid #F1F3F6 !important;
+}
+
+.MuiCardHeader-root {
+  background-color: #2E7CE4 !important;
+  color: white !important;
+}
+
+.MuiCardHeader-title {
+  font-size: 16px !important;
+  font-weight: 500 !important;
+  font-family: "Inter", "Roboto", "Helvetica", "Arial", sans-serif !important;
+}
+
+/* Paper Styles */
+.MuiPaper-root {
+  border-radius: 10px !important;
+}
+
+.MuiPaper-elevation1 {
+  box-shadow: 0px 1px 6px rgba(0, 0, 0, 0.06) !important;
+  border: 1px solid #F1F3F6 !important;
+}
+
+/* Stepper Styles */
+.MuiStepLabel-label {
+  font-size: 14px !important;
+  font-weight: 500 !important;
+  font-family: "Inter", "Roboto", "Helvetica", "Arial", sans-serif !important;
+}
+
+.MuiStepIcon-root {
+  color: #E4E8ED !important;
+}
+
+.MuiStepIcon-root.Mui-completed {
+  color: #28C76F !important;
+}
+
+.MuiStepIcon-root.Mui-active {
+  color: #2E7CE4 !important;
+}
+
+/* Background Colors */
+.custom-bg-default {
+  background-color: #F5F7FA !important;
+  min-height: 100vh;
+}
+
+.custom-bg-paper {
+  background-color: #ffffff !important;
+}
+
+/* IconButton Styles */
+.MuiIconButton-root {
+  color: #6B7280 !important;
+}
+
+/* Box styling overrides */
+.MuiBox-root {
+  font-family: "Inter", "Roboto", "Helvetica", "Arial", sans-serif !important;
+}
+
+/* Additional overrides to ensure MUI wins over Tailwind */
+.MuiFormControl-root .MuiOutlinedInput-root {
+  background-color: #ffffff !important;
+}
+
+.MuiFormControl-root .MuiInputLabel-root {
+  background-color: #ffffff !important;
+  padding-left: 4px !important;
+  padding-right: 4px !important;
+}
+

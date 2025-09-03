@@ -1,700 +1,974 @@
 "use client";
 import React, { useState, useEffect } from 'react';
-import { Search, Bell, Menu, Calendar, Users, ChevronDown, MoreHorizontal, Eye } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import {
+  Box,
+  Card,
+  CardContent,
+  TextField,
+  Button,
+  Typography,
+  Stack,
+  InputAdornment,
+  Container,
+  Avatar,
+  IconButton,
+  Chip,
+  CircularProgress,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Paper,
+  Tooltip
+} from '@mui/material';
+import {
+  Search as SearchIcon,
+  Add as AddIcon,
+  Cancel as CancelIcon,
+  ExpandMore as ExpandMoreIcon,
+  Groups as GroupsIcon,
+  Visibility as VisibilityIcon,
+  CalendarToday as CalendarIcon,
+  ChevronLeft as ChevronLeftIcon,
+  ChevronRight as ChevronRightIcon,
+  Edit as EditIcon
+} from '@mui/icons-material';
+import Header from './Header';
 
 const EventsOverview = () => {
+  const router = useRouter();
   const [mounted, setMounted] = useState(false);
-  const [activeTab, setActiveTab] = useState('listado');
-  const [dateRange, setDateRange] = useState('1 Abr 2025 - 1 May 2025');
-  const [selectedEventId, setSelectedEventId] = useState('british-royal');
-  const [selectedActiveEvent, setSelectedActiveEvent] = useState(null);
-  const [showCreateEventForm, setShowCreateEventForm] = useState(false);
-  const [createEventStep, setCreateEventStep] = useState(1);
-  const [eventFormData, setEventFormData] = useState({
-    nombreEvento: '',
-    tipoEvento: '',
-    fechaInicio: '',
-    fechaFin: '',
-    horaInicio: '',
-    horaFin: '',
-    descripcion: '',
-    ubicacion: '',
-    capacidadMaxima: '',
-    precioEntrada: '',
-    metodoPago: '',
-    requiereRegistro: false,
-    esPublico: true
+  const [searchQuery, setSearchQuery] = useState('');
+  const [events, setEvents] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [expandedEvents, setExpandedEvents] = useState(new Set());
+  const [expandedSections, setExpandedSections] = useState({
+    activos: false,
+    programados: false,
+    pasados: false
   });
+
+
+  // Función para obtener eventos de la API
+  const fetchEvents = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const response = await fetch('http://localhost:3001/api/events');
+      const result = await response.json();
+      
+      if (response.ok && result.status === 'success') {
+        console.log('📥 fetchEvents - eventos recibidos del backend:', result.data.events);
+        // Log específico para el evento que acabamos de crear
+        const nuevoEvento = result.data.events.find(event => event.informacionGeneral.nombreEvento === 'Evento Testing 5');
+        if (nuevoEvento) {
+          console.log('📥 fetchEvents - Evento Testing 5 encontrado:', nuevoEvento);
+          console.log('📥 fetchEvents - fechaEvento del backend:', nuevoEvento.informacionGeneral.fechaEvento);
+        }
+        setEvents(result.data.events || []);
+      } else {
+        throw new Error(result.message || 'Error al cargar eventos');
+      }
+    } catch (err) {
+      console.error('Error fetching events:', err);
+      setError(err.message);
+      setEvents([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     setMounted(true);
+    fetchEvents();
   }, []);
 
   if (!mounted) {
     return null;
   }
 
-  // Base de datos de eventos
-  const eventosDatabase = {
-    'british-royal': {
-      cliente: 'British Royal',
-      eventosActivos: [
-        {
-          id: 1,
-          nombre: 'British royal school',
-          email: 'Gerencia@british.cl',
-          precio: '$0',
-          estado: 'Pago al contado',
-          asistentes: 1200,
-          lugar: 'Parque Padre Hurtado',
-          telefono: '9 4578 2569',
-          rut: '76.029.290-8',
-          fecha: '20/05/2025',
-          periodo: '13:00 a 17:00',
-          imagen: '/api/placeholder/60/60',
-          activo: true
-        },
-        {
-          id: 2,
-          nombre: 'British royal school - Festival de Primavera',
-          email: 'Gerencia@british.cl',
-          precio: '$0',
-          estado: 'Pago por transferencia',
-          asistentes: 1500,
-          lugar: 'Gimnasio Principal',
-          telefono: '9 4578 2569',
-          rut: '76.029.290-8',
-          fecha: '25/05/2025',
-          periodo: '10:00 a 15:00',
-          imagen: '/api/placeholder/60/60',
-          activo: true
-        }
-      ],
-      eventosProgramados: [
-        {
-          id: 3,
-          nombre: 'British royal school - Gala de Graduación',
-          email: 'Gerencia@british.cl',
-          precio: '$15.000',
-          estado: 'Pago por transferencia',
-          asistentes: 800,
-          imagen: '/api/placeholder/60/60'
-        }
-      ],
-      eventosPasados: [
-        {
-          id: 5,
-          nombre: 'Fiesta de otoño',
-          cliente: 'British Royal School',
-          fecha: '22/01/2024',
-          entradas: 220,
-          ingresos: '$1.000.000 CLP',
-          imagen: '/api/placeholder/60/60'
-        }
-      ]
-    },
-    'colegio-san-patricio': {
-      cliente: 'Colegio San Patricio',
-      eventosActivos: [
-        {
-          id: 11,
-          nombre: 'Festival de la Familia San Patricio',
-          email: 'eventos@sanpatricio.cl',
-          precio: '$8.000',
-          estado: 'Pago al contado',
-          asistentes: 950,
-          lugar: 'Patio Central',
-          telefono: '9 8765 4321',
-          rut: '82.456.789-1',
-          fecha: '28/05/2025',
-          periodo: '09:00 a 18:00',
-          imagen: '/api/placeholder/60/60',
-          activo: true
-        }
-      ],
-      eventosProgramados: [
-        {
-          id: 12,
-          nombre: 'Muestra de Talentos San Patricio',
-          email: 'eventos@sanpatricio.cl',
-          precio: '$3.000',
-          estado: 'Pago por transferencia',
-          asistentes: 600,
-          imagen: '/api/placeholder/60/60'
-        }
-      ],
-      eventosPasados: [
-        {
-          id: 14,
-          nombre: 'Día del Libro',
-          cliente: 'Colegio San Patricio',
-          fecha: '23/04/2024',
-          entradas: 180,
-          ingresos: '$540.000 CLP',
-          imagen: '/api/placeholder/60/60'
-        }
-      ]
-    }
+  const handleCreateEvent = () => {
+    router.push('/create-event');
   };
 
-  const currentEventData = eventosDatabase[selectedEventId];
-  const eventOptions = [
-    { id: 'british-royal', name: 'British Royal' },
-    { id: 'colegio-san-patricio', name: 'Colegio San Patricio' }
-  ];
-
-  // Funciones del formulario
-  const handleFormChange = (field, value) => {
-    setEventFormData(prev => ({
-      ...prev,
-      [field]: value
-    }));
+  // Función para editar un evento - navega a la página de crear evento
+  const handleEditEvent = (event) => {
+    // Guardar el evento a editar en localStorage para que la página de crear evento pueda acceder a él
+    localStorage.setItem('editingEvent', JSON.stringify(event));
+    router.push('/create-event?mode=edit');
   };
 
-  const handleNextStep = () => {
-    if (createEventStep < 2) {
-      setCreateEventStep(createEventStep + 1);
-    }
-  };
-
-  const handlePrevStep = () => {
-    if (createEventStep > 1) {
-      setCreateEventStep(createEventStep - 1);
-    }
-  };
-
-  const handleCloseForm = () => {
-    setShowCreateEventForm(false);
-    setCreateEventStep(1);
-    setEventFormData({
-      nombreEvento: '',
-      tipoEvento: '',
-      fechaInicio: '',
-      fechaFin: '',
-      horaInicio: '',
-      horaFin: '',
-      descripcion: '',
-      ubicacion: '',
-      capacidadMaxima: '',
-      precioEntrada: '',
-      metodoPago: '',
-      requiereRegistro: false,
-      esPublico: true
+  // Función para toggle de expansión
+  const toggleEventExpansion = (eventId) => {
+    setExpandedEvents(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(eventId)) {
+        newSet.delete(eventId);
+      } else {
+        newSet.add(eventId);
+      }
+      return newSet;
     });
   };
 
-  const isStep1Valid = () => {
-    return eventFormData.nombreEvento && 
-           eventFormData.tipoEvento && 
-           eventFormData.fechaInicio && 
-           eventFormData.horaInicio;
+  // Función para toggle de secciones
+  const toggleSectionExpansion = (section) => {
+    setExpandedSections(prev => ({
+      ...prev,
+      [section]: !prev[section]
+    }));
   };
 
-  // Navbar Component
-  const Navbar = () => (
-    <nav className="bg-slate-700 text-white">
-      <div className="px-4 py-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-6">
-            <div className="text-blue-400 text-xl">💎</div>
-            <div className="text-white font-medium">
-              ¡Bienvenido, José Ortiz! 👋
-            </div>
-          </div>
-          <div className="flex items-center space-x-4">
-            <Search className="w-5 h-5 cursor-pointer text-gray-300 hover:text-white" />
-            <Bell className="w-5 h-5 cursor-pointer text-gray-300 hover:text-white" />
-            <div className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-gray-400 rounded-full"></div>
-              <div className="text-sm">
-                <div className="font-medium text-white">José Ortiz</div>
-                <div className="text-gray-300 text-xs">Administrador</div>
-              </div>
-            </div>
-            <Menu className="w-5 h-5 cursor-pointer text-gray-300 hover:text-white" />
-          </div>
-        </div>
-      </div>
-    </nav>
-  );
-
-  // Event Card Component
-  const EventCard = ({ evento, showDetails = false }) => (
-    <div className="bg-white rounded-lg border shadow-sm p-4 mb-3">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-4">
-          <div className="relative">
-            <div className="w-12 h-12 bg-gray-300 rounded object-cover"></div>
-            {evento.activo && (
-              <div className="absolute -top-1 -left-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white"></div>
-            )}
-          </div>
-          
-          <div className="flex-1">
-            <div className="flex items-center space-x-4">
-              <div>
-                <h3 className="font-medium text-gray-900">{evento.nombre}</h3>
-                <p className="text-sm text-gray-600">{evento.email}</p>
-              </div>
-              
-              <div className="text-center">
-                <div className="text-lg font-bold text-blue-600">{evento.precio}</div>
-                <div className="text-xs text-gray-500">{evento.estado}</div>
-              </div>
-              
-              <div className="flex items-center space-x-2">
-                <Users className="w-4 h-4 text-blue-500" />
-                <span className="bg-blue-500 text-white px-3 py-1 rounded text-sm font-medium">
-                  Asistentes {evento.asistentes}
-                </span>
-              </div>
-            </div>
-            
-            {showDetails && (
-              <div className="mt-3 grid grid-cols-4 gap-4 text-sm">
-                <div>
-                  <div className="font-medium text-gray-700">Lugar</div>
-                  <div className="text-gray-600">{evento.lugar}</div>
-                </div>
-                <div>
-                  <div className="font-medium text-gray-700">Teléfono</div>
-                  <div className="text-gray-600">{evento.telefono}</div>
-                </div>
-                <div>
-                  <div className="font-medium text-gray-700">Rut</div>
-                  <div className="text-gray-600">{evento.rut}</div>
-                </div>
-                <div>
-                  <div className="font-medium text-gray-700">Fecha</div>
-                  <div className="text-gray-600">{evento.fecha}</div>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-        
-        <div className="flex items-center space-x-2">
-          <button className="w-8 h-8 bg-red-500 text-white rounded-full flex items-center justify-center text-xs font-bold">
-            !
-          </button>
-          <button className="w-8 h-8 bg-gray-300 text-gray-600 rounded-full flex items-center justify-center">
-            <MoreHorizontal className="w-4 h-4" />
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-
-  // Past Event Row Component
-  const PastEventRow = ({ evento }) => (
-    <tr className="border-b hover:bg-gray-50">
-      <td className="py-3 px-4">
-        <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 bg-gray-300 rounded"></div>
-          <div>
-            <div className="font-medium text-gray-900">{evento.nombre}</div>
-            <div className="text-sm text-gray-600">{evento.cliente}</div>
-          </div>
-        </div>
-      </td>
-      <td className="py-3 px-4 text-gray-700">{evento.fecha}</td>
-      <td className="py-3 px-4 text-gray-700">{evento.entradas}</td>
-      <td className="py-3 px-4 text-gray-700">{evento.ingresos}</td>
-      <td className="py-3 px-4">
-        <button className="text-blue-500 hover:text-blue-600">
-          <Eye className="w-4 h-4" />
-        </button>
-      </td>
-    </tr>
-  );
-
-  // Formulario de Crear Evento - Paso 1
-  const CreateEventFormStep1 = () => (
-    <div className="p-6 bg-gray-50 min-h-screen">
-      <div className="mb-6">
-        <div className="flex items-center justify-between mb-4">
-          <h1 className="text-xl font-semibold text-gray-900">Crear Nuevo Evento</h1>
-          <button 
-            onClick={handleCloseForm}
-            className="text-gray-500 hover:text-gray-700"
-          >
-            ✕
-          </button>
-        </div>
-        
-        <div className="flex items-center space-x-4 mb-6">
-          <div className="flex items-center space-x-2">
-            <div className="w-8 h-8 bg-blue-500 text-white rounded-full flex items-center justify-center text-sm font-medium">
-              1
-            </div>
-            <span className="text-sm font-medium text-blue-600">Información Básica</span>
-          </div>
-          <div className="w-12 h-0.5 bg-gray-300"></div>
-          <div className="flex items-center space-x-2">
-            <div className="w-8 h-8 bg-gray-300 text-gray-500 rounded-full flex items-center justify-center text-sm font-medium">
-              2
-            </div>
-            <span className="text-sm text-gray-500">Detalles y Configuración</span>
-          </div>
-        </div>
-      </div>
-
-      <div className="bg-white rounded-lg border shadow-sm">
-        <div className="bg-blue-500 text-white px-4 py-3 rounded-t-lg">
-          <h3 className="text-sm font-medium">Paso 1: Información Básica del Evento</h3>
-        </div>
-        
-        <div className="p-6 space-y-6">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Nombre del evento *
-            </label>
-            <input
-              type="text"
-              value={eventFormData.nombreEvento}
-              onChange={(e) => handleFormChange('nombreEvento', e.target.value)}
-              placeholder="Ej: Festival de Primavera 2025"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Tipo de evento *
-            </label>
-            <select 
-              value={eventFormData.tipoEvento}
-              onChange={(e) => handleFormChange('tipoEvento', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            >
-              <option value="">Selecciona el tipo de evento</option>
-              <option value="festival">Festival</option>
-              <option value="concierto">Concierto</option>
-              <option value="conferencia">Conferencia</option>
-              <option value="deportivo">Evento Deportivo</option>
-            </select>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Fecha de inicio *
-              </label>
-              <input
-                type="date"
-                value={eventFormData.fechaInicio}
-                onChange={(e) => handleFormChange('fechaInicio', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Hora de inicio *
-              </label>
-              <input
-                type="time"
-                value={eventFormData.horaInicio}
-                onChange={(e) => handleFormChange('horaInicio', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Descripción del evento
-            </label>
-            <textarea
-              value={eventFormData.descripcion}
-              onChange={(e) => handleFormChange('descripcion', e.target.value)}
-              placeholder="Describe brevemente el evento..."
-              rows={3}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
-            />
-          </div>
-        </div>
-
-        <div className="px-6 py-4 bg-gray-50 rounded-b-lg flex justify-between">
-          <button 
-            onClick={handleCloseForm}
-            className="px-4 py-2 border border-gray-300 rounded text-sm text-gray-700 hover:bg-gray-100 font-medium"
-          >
-            Cancelar
-          </button>
-          <button 
-            onClick={handleNextStep}
-            disabled={!isStep1Valid()}
-            className={`px-6 py-2 rounded text-sm font-medium ${
-              isStep1Valid() 
-                ? 'bg-blue-500 text-white hover:bg-blue-600' 
-                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-            }`}
-          >
-            Siguiente →
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-
-  // Formulario de Crear Evento - Paso 2
-  const CreateEventFormStep2 = () => (
-    <div className="p-6 bg-gray-50 min-h-screen">
-      <div className="mb-6">
-        <div className="flex items-center justify-between mb-4">
-          <h1 className="text-xl font-semibold text-gray-900">Crear Nuevo Evento</h1>
-          <button 
-            onClick={handleCloseForm}
-            className="text-gray-500 hover:text-gray-700"
-          >
-            ✕
-          </button>
-        </div>
-        
-        <div className="flex items-center space-x-4 mb-6">
-          <div className="flex items-center space-x-2">
-            <div className="w-8 h-8 bg-green-500 text-white rounded-full flex items-center justify-center text-sm font-medium">
-              ✓
-            </div>
-            <span className="text-sm text-green-600">Información Básica</span>
-          </div>
-          <div className="w-12 h-0.5 bg-blue-500"></div>
-          <div className="flex items-center space-x-2">
-            <div className="w-8 h-8 bg-blue-500 text-white rounded-full flex items-center justify-center text-sm font-medium">
-              2
-            </div>
-            <span className="text-sm font-medium text-blue-600">Detalles y Configuración</span>
-          </div>
-        </div>
-      </div>
-
-      <div className="bg-white rounded-lg border shadow-sm">
-        <div className="bg-blue-500 text-white px-4 py-3 rounded-t-lg">
-          <h3 className="text-sm font-medium">Paso 2: Detalles y Configuración</h3>
-        </div>
-        
-        <div className="p-6 space-y-6">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Ubicación del evento *
-            </label>
-            <input
-              type="text"
-              value={eventFormData.ubicacion}
-              onChange={(e) => handleFormChange('ubicacion', e.target.value)}
-              placeholder="Ej: Auditorio Principal"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Capacidad máxima
-            </label>
-            <input
-              type="number"
-              value={eventFormData.capacidadMaxima}
-              onChange={(e) => handleFormChange('capacidadMaxima', e.target.value)}
-              placeholder="500"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Precio de entrada (CLP)
-            </label>
-            <input
-              type="number"
-              value={eventFormData.precioEntrada}
-              onChange={(e) => handleFormChange('precioEntrada', e.target.value)}
-              placeholder="0"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            />
-          </div>
-
-          <div className="bg-gray-50 p-4 rounded-lg">
-            <h4 className="text-sm font-medium text-gray-900 mb-3">Resumen:</h4>
-            <div className="space-y-1 text-sm text-gray-600">
-              <p><span className="font-medium">Nombre:</span> {eventFormData.nombreEvento}</p>
-              <p><span className="font-medium">Tipo:</span> {eventFormData.tipoEvento}</p>
-              <p><span className="font-medium">Fecha:</span> {eventFormData.fechaInicio}</p>
-              <p><span className="font-medium">Ubicación:</span> {eventFormData.ubicacion}</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="px-6 py-4 bg-gray-50 rounded-b-lg flex justify-between">
-          <button 
-            onClick={handlePrevStep}
-            className="px-4 py-2 border border-gray-300 rounded text-sm text-gray-700 hover:bg-gray-100 font-medium"
-          >
-            ← Anterior
-          </button>
-          <button 
-            onClick={() => {
-              alert('¡Evento creado exitosamente!');
-              handleCloseForm();
-            }}
-            className="px-6 py-2 bg-green-500 text-white rounded text-sm font-medium hover:bg-green-600"
-          >
-            Crear Evento
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-
-  // Renderizado principal
-  if (showCreateEventForm) {
+  // Componente para cada card de evento
+  const EventCard = ({ event }) => {
+    const totalAsistentes = event.totalCuposDisponibles || 0;
+    const precioMinimo = event.entradas && event.entradas.length > 0 
+      ? Math.min(...event.entradas.map(e => e.precio || 0))
+      : 0;
+    const isExpanded = expandedEvents.has(event.id);
+    
+    // Formatear periodo de tiempo
+    const periodo = `${event.informacionGeneral.horaInicio} a ${event.informacionGeneral.horaTermino}`;
+    
     return (
-      <div>
-        {createEventStep === 1 && <CreateEventFormStep1 />}
-        {createEventStep === 2 && <CreateEventFormStep2 />}
-      </div>
+      <Card elevation={2} sx={{ 
+        bgcolor: '#FFFFFF', 
+        borderRadius: '12px', 
+        mb: 2,
+        '&:hover': {
+          boxShadow: '0px 6px 12px rgba(0, 0, 0, 0.15)'
+        }
+      }}>
+        <CardContent sx={{ p: 3 }}>
+          {/* Fila principal */}
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+            {/* Puntito verde + Banner */}
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, minWidth: '80px' }}>
+              <Box sx={{
+                width: 12,
+                height: 12,
+                borderRadius: '50%',
+                bgcolor: '#10B981',
+                flexShrink: 0
+              }} />
+              
+              <Avatar
+                src={event.imagenPrincipal}
+                sx={{ 
+                  width: 60, 
+                  height: 60,
+                  borderRadius: '8px'
+                }}
+              />
+            </Box>
+            
+            {/* Información del evento */}
+            <Box sx={{ flex: '1 1 300px', minWidth: '250px' }}>
+              <Typography variant="h6" sx={{ 
+                fontWeight: 600, 
+                fontSize: '16px',
+                color: '#374151',
+                mb: 0.5
+              }}>
+                {event.informacionGeneral.nombreEvento}
+              </Typography>
+              <Typography variant="body2" sx={{ 
+                color: '#6B7280',
+                fontSize: '14px'
+              }}>
+                {event.organizador.correoElectronico}
+              </Typography>
+            </Box>
+            
+            {/* Precio */}
+            <Box sx={{ textAlign: 'center', minWidth: '100px', flex: '0 0 100px' }}>
+              <Typography variant="h6" sx={{ 
+                fontWeight: 600,
+                color: '#2563EB',
+                fontSize: '18px'
+              }}>
+                ${precioMinimo.toLocaleString()}
+              </Typography>
+              <Typography variant="caption" sx={{ 
+                color: '#6B7280',
+                fontSize: '12px'
+              }}>
+                activo
+              </Typography>
+            </Box>
+            
+            {/* Asistentes */}
+            <Box sx={{ flex: '0 0 140px', minWidth: '140px' }}>
+              <Chip
+                icon={<GroupsIcon />}
+                label={`Asistentes ${totalAsistentes}`}
+                sx={{
+                  bgcolor: '#3B82F6',
+                  color: 'white',
+                  fontWeight: 500,
+                  fontSize: '12px',
+                  width: '100%'
+                }}
+              />
+            </Box>
+            
+            {/* Iconos de acción */}
+            <Box sx={{ display: 'flex', gap: 1, flex: '0 0 auto' }}>
+              <Tooltip title="Cancelar evento" arrow>
+                <IconButton 
+                  size="small"
+                  sx={{ 
+                    color: '#EF4444',
+                    '&:hover': { bgcolor: 'rgba(239, 68, 68, 0.1)' }
+                  }}
+                >
+                  <CancelIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+              
+              <Tooltip title="Editar evento" arrow>
+                <IconButton 
+                  size="small"
+                  onClick={() => handleEditEvent(event)}
+                  sx={{ 
+                    color: '#3B82F6',
+                    '&:hover': { bgcolor: 'rgba(59, 130, 246, 0.1)' }
+                  }}
+                >
+                  <EditIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+              
+              <IconButton 
+                size="small"
+                onClick={() => toggleEventExpansion(event.id)}
+                sx={{ 
+                  color: '#6B7280',
+                  transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
+                  transition: 'transform 0.3s ease',
+                  '&:hover': { bgcolor: 'rgba(107, 114, 128, 0.1)' }
+                }}
+              >
+                <ExpandMoreIcon fontSize="small" />
+              </IconButton>
+            </Box>
+          </Box>
+          
+          {/* Información expandida */}
+          {isExpanded && (
+            <Box sx={{ 
+              mt: 3, 
+              pt: 3, 
+              borderTop: '1px solid #E5E7EB',
+              bgcolor: '#F9FAFB',
+              borderRadius: '8px',
+              p: 3
+            }}>
+              <Box sx={{ display: 'flex', gap: 2 }}>
+                {/* Lugar */}
+                <Box sx={{ flex: '0 0 20%', width: '20%' }}>
+                  <Typography variant="subtitle2" sx={{ 
+                    fontWeight: 600, 
+                    color: '#374151', 
+                    fontSize: '12px',
+                    mb: 0.5
+                  }}>
+                    Lugar
+                  </Typography>
+                  <Typography variant="body2" sx={{ color: '#6B7280', fontSize: '14px' }}>
+                    {event.informacionGeneral.lugarEvento}
+                  </Typography>
+                </Box>
+                
+                {/* Teléfono */}
+                <Box sx={{ flex: '0 0 20%', width: '20%' }}>
+                  <Typography variant="subtitle2" sx={{ 
+                    fontWeight: 600, 
+                    color: '#374151', 
+                    fontSize: '12px',
+                    mb: 0.5
+                  }}>
+                    Teléfono
+                  </Typography>
+                  <Typography variant="body2" sx={{ color: '#6B7280', fontSize: '14px' }}>
+                    {event.organizador.telefonoContacto}
+                  </Typography>
+                </Box>
+                
+                {/* RUT */}
+                <Box sx={{ flex: '0 0 20%', width: '20%' }}>
+                  <Typography variant="subtitle2" sx={{ 
+                    fontWeight: 600, 
+                    color: '#374151', 
+                    fontSize: '12px',
+                    mb: 0.5
+                  }}>
+                    Rut
+                  </Typography>
+                  <Typography variant="body2" sx={{ color: '#6B7280', fontSize: '14px' }}>
+                    {event.organizador.rutEmpresa}
+                  </Typography>
+                </Box>
+                
+                {/* Fecha */}
+                <Box sx={{ flex: '0 0 20%', width: '20%' }}>
+                  <Typography variant="subtitle2" sx={{ 
+                    fontWeight: 600, 
+                    color: '#374151', 
+                    fontSize: '12px',
+                    mb: 0.5
+                  }}>
+                    Fecha
+                  </Typography>
+                  <Typography variant="body2" sx={{ color: '#6B7280', fontSize: '14px' }}>
+                    {new Date(event.informacionGeneral.fechaEvento).toLocaleDateString('es-CL')}
+                  </Typography>
+                </Box>
+                
+                {/* Periodo */}
+                <Box sx={{ flex: '0 0 20%', width: '20%' }}>
+                  <Typography variant="subtitle2" sx={{ 
+                    fontWeight: 600, 
+                    color: '#374151', 
+                    fontSize: '12px',
+                    mb: 0.5
+                  }}>
+                    Periodo
+                  </Typography>
+                  <Typography variant="body2" sx={{ color: '#6B7280', fontSize: '14px' }}>
+                    {periodo}
+                  </Typography>
+                </Box>
+              </Box>
+            </Box>
+          )}
+        </CardContent>
+      </Card>
     );
-  }
+  };
+
+  // Componente tabla para eventos pasados
+  const EventTable = ({ events }) => {
+    return (
+      <TableContainer component={Paper} sx={{ bgcolor: 'transparent', boxShadow: 'none' }}>
+        <Table>
+          <TableHead>
+            <TableRow sx={{ '& th': { bgcolor: '#F3F4F6', fontWeight: 600, fontSize: '14px', color: '#374151' } }}>
+              <TableCell sx={{ width: '60px' }}></TableCell>
+              <TableCell>Evento</TableCell>
+              <TableCell align="center">Fecha</TableCell>
+              <TableCell align="center">Entradas vendidas</TableCell>
+              <TableCell align="center">Ingresos totales</TableCell>
+              <TableCell align="center">Ver más</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {events.map((event) => {
+              const precioMinimo = event.entradas && event.entradas.length > 0 
+                ? Math.min(...event.entradas.map(e => e.precio || 0))
+                : 0;
+              const ingresosTotales = event.ingresosTotales || 0;
+              const entradasVendidas = event.totalEntradasVendidas || 0;
+
+              return (
+                <TableRow 
+                  key={event.id}
+                  sx={{ 
+                    bgcolor: '#FFFFFF',
+                    '&:hover': { bgcolor: '#F3F4F6' },
+                    '& td': { borderBottom: '1px solid #E5E7EB' }
+                  }}
+                >
+                  {/* Imagen del evento */}
+                  <TableCell>
+                    <Avatar
+                      src={event.imagenPrincipal}
+                      sx={{ 
+                        width: 50, 
+                        height: 50,
+                        borderRadius: '8px'
+                      }}
+                    />
+                  </TableCell>
+                  
+                  {/* Información del evento */}
+                  <TableCell>
+                    <Box>
+                      <Typography variant="subtitle1" sx={{ 
+                        fontWeight: 600, 
+                        fontSize: '14px',
+                        color: '#374151',
+                        mb: 0.5
+                      }}>
+                        {event.informacionGeneral.nombreEvento}
+                      </Typography>
+                      <Typography variant="body2" sx={{ 
+                        color: '#6B7280',
+                        fontSize: '12px'
+                      }}>
+                        {event.organizador.nombreEmpresaColegio}
+                      </Typography>
+                    </Box>
+                  </TableCell>
+                  
+                  {/* Fecha */}
+                  <TableCell align="center">
+                    <Typography variant="body2" sx={{ fontSize: '14px', color: '#374151' }}>
+                      {new Date(event.informacionGeneral.fechaEvento).toLocaleDateString('es-CL')}
+                    </Typography>
+                  </TableCell>
+                  
+                  {/* Entradas vendidas */}
+                  <TableCell align="center">
+                    <Typography variant="body2" sx={{ fontSize: '14px', color: '#374151', fontWeight: 600 }}>
+                      {entradasVendidas}
+                    </Typography>
+                  </TableCell>
+                  
+                  {/* Ingresos totales */}
+                  <TableCell align="center">
+                    <Typography variant="body2" sx={{ fontSize: '14px', color: '#059669', fontWeight: 600 }}>
+                      ${ingresosTotales.toLocaleString()} CLP
+                    </Typography>
+                  </TableCell>
+                  
+                  {/* Ver más */}
+                  <TableCell align="center">
+                    <IconButton 
+                      size="small"
+                      sx={{ 
+                        color: '#06B6D4',
+                        '&:hover': { bgcolor: 'rgba(6, 182, 212, 0.1)' }
+                      }}
+                    >
+                      <VisibilityIcon fontSize="small" />
+                    </IconButton>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+      </TableContainer>
+    );
+  };
+
+  // Filtrar eventos activos (fechaEvento >= hoy y <= 7 días)
+  const eventosActivos = events.filter(event => {
+    // Crear fecha local para evitar problemas de zona horaria
+    const [year, month, day] = event.informacionGeneral.fechaEvento.split('-');
+    const fechaEvento = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+    
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+    const sieteDias = new Date();
+    sieteDias.setDate(hoy.getDate() + 7);
+    sieteDias.setHours(23, 59, 59, 999);
+    
+    // Log para debuggear el filtrado
+    if (event.informacionGeneral.nombreEvento === 'Evento Testing 5') {
+      console.log('🔍 eventosActivos - Evento Testing 5:');
+      console.log('🔍 eventosActivos - fechaEvento string:', event.informacionGeneral.fechaEvento);
+      console.log('🔍 eventosActivos - fechaEvento Date object (LOCAL):', fechaEvento);
+      console.log('🔍 eventosActivos - hoy:', hoy);
+      console.log('🔍 eventosActivos - sieteDias:', sieteDias);
+      console.log('🔍 eventosActivos - fechaEvento >= hoy:', fechaEvento >= hoy);
+      console.log('🔍 eventosActivos - fechaEvento <= sieteDias:', fechaEvento <= sieteDias);
+      console.log('🔍 eventosActivos - resultado final:', fechaEvento >= hoy && fechaEvento <= sieteDias);
+    }
+    
+    return fechaEvento >= hoy && fechaEvento <= sieteDias;
+  });
+
+  // Filtrar eventos programados (fechaEvento > 7 días en el futuro)
+  const eventosProgramados = events.filter(event => {
+    // Crear fecha local para evitar problemas de zona horaria
+    const [year, month, day] = event.informacionGeneral.fechaEvento.split('-');
+    const fechaEvento = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+    
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+    const sieteDias = new Date();
+    sieteDias.setDate(hoy.getDate() + 7);
+    sieteDias.setHours(23, 59, 59, 999);
+    return fechaEvento > sieteDias;
+  });
+
+  // Filtrar eventos pasados (fechaEvento < hoy)
+  const eventosPasados = events.filter(event => {
+    // Crear fecha local para evitar problemas de zona horaria
+    const [year, month, day] = event.informacionGeneral.fechaEvento.split('-');
+    const fechaEvento = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+    
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+    
+    // Log para debuggear el filtrado
+    if (event.informacionGeneral.nombreEvento === 'Evento Testing 5') {
+      console.log('🔍 eventosPasados - Evento Testing 5:');
+      console.log('🔍 eventosPasados - fechaEvento string:', event.informacionGeneral.fechaEvento);
+      console.log('🔍 eventosPasados - fechaEvento Date object (LOCAL):', fechaEvento);
+      console.log('🔍 eventosPasados - hoy:', hoy);
+      console.log('🔍 eventosPasados - fechaEvento < hoy:', fechaEvento < hoy);
+      console.log('🔍 eventosPasados - resultado final:', fechaEvento < hoy);
+    }
+    
+    return fechaEvento < hoy;
+  });
+
+  // Filtrar eventos activos por búsqueda
+  const eventosActivosFiltrados = eventosActivos.filter(event => {
+    if (!searchQuery.trim()) return true;
+    
+    const query = searchQuery.toLowerCase();
+    const nombreEvento = event.informacionGeneral.nombreEvento.toLowerCase();
+    const correoOrganizador = event.organizador.correoElectronico.toLowerCase();
+    const nombreEmpresa = event.organizador.nombreEmpresaColegio.toLowerCase();
+    const lugarEvento = event.informacionGeneral.lugarEvento.toLowerCase();
+    
+    return nombreEvento.includes(query) || 
+           correoOrganizador.includes(query) || 
+           nombreEmpresa.includes(query) ||
+           lugarEvento.includes(query);
+  });
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Navbar />
+    <Box sx={{ bgcolor: '#F5F7FA', minHeight: '100vh' }}>
+      {/* Header */}
+      <Header />
       
-      <div className="bg-gray-100 px-6 py-4 border-b border-gray-200">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-6">
-            <div className="flex space-x-1 bg-white rounded-lg p-1 border shadow-sm">
-              <button
-                onClick={() => setActiveTab('listado')}
-                className={`px-4 py-2 rounded text-sm font-medium ${
-                  activeTab === 'listado'
-                    ? 'bg-gray-200 text-gray-900'
-                    : 'text-gray-600 hover:text-gray-900'
-                }`}
-              >
-                Listado
-              </button>
-              <button
-                onClick={() => setActiveTab('calendario')}
-                className={`px-4 py-2 rounded text-sm font-medium ${
-                  activeTab === 'calendario'
-                    ? 'bg-gray-200 text-gray-900'
-                    : 'text-gray-600 hover:text-gray-900'
-                }`}
-              >
-                Calendario
-              </button>
-            </div>
-          </div>
-          
-          <div className="relative">
-            <select 
-              value={selectedEventId}
-              onChange={(e) => setSelectedEventId(e.target.value)}
-              className="bg-red-500 text-white px-3 py-1 rounded text-sm appearance-none cursor-pointer pr-8 font-medium"
-            >
-              {eventOptions.map(option => (
-                <option key={option.id} value={option.id} className="bg-white text-black">
-                  {option.name}
-                </option>
-              ))}
-            </select>
-            <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 w-4 h-4 text-white pointer-events-none" />
-          </div>
-        </div>
-      </div>
-
-      <div className="p-6">
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center space-x-4">
-            <div className="relative flex-1 max-w-md">
-              <Search className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
-              <input
-                type="text"
+      <Container maxWidth="lg" sx={{ py: 3 }}>
+                {/* Header Section */}
+        <Stack spacing={3} sx={{ mb: 4 }}>
+          {/* Primera fila: Buscador + Esta semana + Rango de fechas */}
+          <Stack direction="row" spacing={3} alignItems="center">
+            {/* Buscador */}
+            <TextField
                 placeholder="Buscar"
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              />
-            </div>
-            
-            <button className="px-4 py-2 border border-gray-300 rounded-lg text-sm bg-white hover:bg-gray-50">
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              sx={{
+                width: '400px',
+                '& .MuiOutlinedInput-root': {
+                  borderRadius: '10px',
+                  backgroundColor: '#FFFFFF',
+                  height: '32px',
+                  '& fieldset': {
+                    borderColor: '#D1D5DB'
+                  },
+                  '&:hover fieldset': {
+                    borderColor: '#9CA3AF'
+                  },
+                  '&.Mui-focused fieldset': {
+                    borderColor: '#374151 !important',
+                    borderWidth: '1px !important'
+                  }
+                }
+              }}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon sx={{ color: '#6B7280' }} />
+                  </InputAdornment>
+                ),
+              }}
+            />
+
+            {/* Esta semana */}
+            <Button
+              variant="outlined"
+              sx={{
+                borderRadius: '8px',
+                textTransform: 'none',
+                fontWeight: 500,
+                fontSize: '14px',
+                px: 2,
+                height: '32px',
+                borderColor: '#D1D5DB',
+                color: '#374151',
+                '&:hover': {
+                  borderColor: '#9CA3AF',
+                  bgcolor: '#F9FAFB'
+                }
+              }}
+            >
               Esta semana
-            </button>
-            
-            <div className="flex items-center space-x-2 px-4 py-2 border border-gray-300 rounded-lg text-sm bg-white">
-              <Calendar className="w-4 h-4 text-gray-400" />
-              <span>{dateRange}</span>
-              <ChevronDown className="w-4 h-4 text-gray-400" />
-            </div>
-          </div>
+            </Button>
+
+            {/* Selector de rango de fechas */}
+            <Box sx={{ 
+              display: 'flex', 
+              alignItems: 'center',
+              border: '1px solid #D1D5DB',
+              borderRadius: '8px',
+              bgcolor: '#FFFFFF',
+              px: 1,
+              height: '32px'
+            }}>
+              <IconButton size="small" sx={{ color: '#6B7280', p: 0.5 }}>
+                <ChevronLeftIcon fontSize="small" />
+              </IconButton>
+              
+              <Box sx={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: 1, 
+                px: 2,
+                minWidth: '180px'
+              }}>
+                <CalendarIcon sx={{ color: '#6B7280', fontSize: '18px' }} />
+                <Typography sx={{ 
+                  fontSize: '14px', 
+                  color: '#374151',
+                  fontWeight: 500
+                }}>
+                  1 Abr 2025 - 1 May 2025
+                </Typography>
+              </Box>
+              
+              <IconButton size="small" sx={{ color: '#6B7280', p: 0.5 }}>
+                <ChevronRightIcon fontSize="small" />
+              </IconButton>
+            </Box>
+          </Stack>
+
+          {/* Segunda fila: Solo Crear nuevo evento */}
+          <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={handleCreateEvent}
+              sx={{
+                background: 'linear-gradient(135deg, #1E293B 0%, #374151 100%) !important',
+                borderRadius: '10px',
+                textTransform: 'none',
+                fontWeight: 600,
+                fontSize: '14px',
+                px: 3,
+                py: 1.5,
+                boxShadow: '0px 4px 4px 0px rgba(0, 0, 0, 0.25)',
+                color: 'white !important',
+                border: 'none !important',
+                '&.MuiButton-contained': {
+                  background: 'linear-gradient(135deg, #1E293B 0%, #374151 100%) !important',
+                  color: 'white !important'
+                },
+                '&:hover': {
+                  background: 'linear-gradient(135deg, #0F172A 0%, #1F2937 100%) !important',
+                  boxShadow: '0px 6px 6px 0px rgba(0, 0, 0, 0.3)'
+                }
+              }}
+            >
+              Crear nuevo evento
+            </Button>
+          </Box>
+        </Stack>
+
+        {/* Eventos Activos */}
+        <Box sx={{ mb: 4 }}>
+          {/* Pestaña */}
+          <Box sx={{ 
+            bgcolor: '#374151',
+            color: 'white',
+            px: 2,
+            py: 1,
+            borderRadius: '12px 12px 0 0',
+            width: '30%',
+            zIndex: 0,
+            position: 'relative'
+          }}>
+            <Typography 
+              variant="h6" 
+              sx={{ 
+                color: 'white !important',
+                fontSize: '1rem',
+                fontWeight: '700 !important',
+                fontFamily: 'inherit',
+                m: 0
+              }}
+            >
+              Eventos activos
+            </Typography>
+          </Box>
           
-          <button 
-            onClick={() => setShowCreateEventForm(true)}
-            className="bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-600 flex items-center"
-          >
-            ⭕ Crear nuevo evento
-          </button>
-        </div>
+          {/* Cuerpo del box */}
+          <Card elevation={3} sx={{ 
+            borderRadius: '0 12px 12px 12px', 
+            bgcolor: '#D9D9D9',
+            mt: -1,
+            position: 'relative',
+            zIndex: 1
+          }}>
+            <CardContent sx={{ p: 3 }}>
+              {loading ? (
+                <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 4 }}>
+                  <CircularProgress size={32} />
+                  <Typography variant="body1" sx={{ ml: 2, color: '#6B7280' }}>
+                    Cargando eventos...
+                  </Typography>
+                </Box>
+              ) : error ? (
+                <Box sx={{ textAlign: 'center', py: 4 }}>
+                  <Typography variant="body1" sx={{ color: '#EF4444', mb: 2 }}>
+                    Error al cargar eventos: {error}
+                  </Typography>
+                  <Button 
+                    onClick={fetchEvents}
+                    variant="outlined"
+                    size="small"
+                    sx={{ textTransform: 'none' }}
+                  >
+                    Reintentar
+                  </Button>
+                </Box>
+              ) : eventosActivosFiltrados.length === 0 ? (
+                <Box sx={{ textAlign: 'center', py: 4 }}>
+                  <Typography variant="body1" sx={{ color: '#6B7280', fontSize: '16px' }}>
+                    {searchQuery.trim() ? 'No se encontraron eventos que coincidan con la búsqueda' : 'No hay eventos activos'}
+                  </Typography>
+                </Box>
+              ) : (
+                <Stack spacing={2}>
+                  {(expandedSections.activos ? eventosActivosFiltrados : eventosActivosFiltrados.slice(0, 3)).map((event) => (
+                    <EventCard key={event.id} event={event} />
+                  ))}
+                  {eventosActivosFiltrados.length > 3 && (
+                    <Box sx={{ textAlign: 'center', py: 2 }}>
+                      <Button
+                        onClick={() => toggleSectionExpansion('activos')}
+                        variant="outlined"
+                        size="small"
+                        sx={{ 
+                          textTransform: 'none',
+                          borderRadius: '20px',
+                          px: 3,
+                          py: 1
+                        }}
+                      >
+                        {expandedSections.activos 
+                          ? `Ver menos (${eventosActivosFiltrados.length - 3} menos)` 
+                          : `Ver todos (${eventosActivosFiltrados.length - 3} más)`
+                        }
+                      </Button>
+                    </Box>
+                  )}
+                </Stack>
+              )}
+            </CardContent>
+          </Card>
+        </Box>
 
-        <div className="mb-8">
-          <div className="bg-blue-500 text-white px-4 py-2 rounded-t-lg">
-            <h2 className="text-sm font-medium">Eventos activos</h2>
-          </div>
-          <div className="bg-white p-4 rounded-b-lg border border-t-0">
-            <div className="mb-4">
-              <select 
-                value={selectedActiveEvent || ''}
-                onChange={(e) => setSelectedActiveEvent(e.target.value || null)}
-                className="text-sm text-gray-600 bg-transparent border-0 focus:outline-none cursor-pointer"
-              >
-                <option value="">Seleccionar evento a visualizar ▼</option>
-                {currentEventData.eventosActivos.map(evento => (
-                  <option key={evento.id} value={evento.id}>
-                    {evento.nombre}
-                  </option>
-                ))}
-              </select>
-            </div>
-            
-            {currentEventData.eventosActivos.map(evento => (
-              <EventCard 
-                key={evento.id} 
-                evento={evento} 
-                showDetails={selectedActiveEvent == evento.id}
-              />
-            ))}
-          </div>
-        </div>
+        {/* Línea separadora */}
+        <Box sx={{ 
+          width: '100%', 
+          height: '2px', 
+          bgcolor: '#D9D9D9', 
+          mb: 4,
+          borderRadius: '1px'
+        }} />
 
-        <div className="mb-8">
-          <h2 className="text-base font-medium text-gray-900 mb-4">Eventos programados</h2>
-          <div className="space-y-3">
-            {currentEventData.eventosProgramados.map(evento => (
-              <EventCard key={evento.id} evento={evento} />
-            ))}
-          </div>
-        </div>
+        {/* Eventos Programados */}
+        <Box sx={{ mb: 4 }}>
+          {/* Pestaña */}
+          <Box sx={{ 
+            bgcolor: '#4B5563',
+            color: 'white',
+            px: 2,
+            py: 1,
+            borderRadius: '12px 12px 0 0',
+            width: '30%',
+            zIndex: 0,
+            position: 'relative'
+          }}>
+            <Typography 
+              variant="h6" 
+              sx={{ 
+                color: 'white !important',
+                fontSize: '1rem',
+                fontWeight: '700 !important',
+                fontFamily: 'inherit',
+                m: 0
+              }}
+            >
+              Eventos Programados
+            </Typography>
+          </Box>
+          
+          {/* Cuerpo del box */}
+          <Card elevation={3} sx={{ 
+            borderRadius: '0 12px 12px 12px', 
+            bgcolor: '#D9D9D9',
+            mt: -1,
+            position: 'relative',
+            zIndex: 1
+          }}>
+            <CardContent sx={{ p: 3 }}>
+              {loading ? (
+                <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 4 }}>
+                  <CircularProgress size={32} />
+                  <Typography variant="body1" sx={{ ml: 2, color: '#6B7280' }}>
+                    Cargando eventos...
+                  </Typography>
+                </Box>
+              ) : error ? (
+                <Box sx={{ textAlign: 'center', py: 4 }}>
+                  <Typography variant="body1" sx={{ color: '#EF4444', mb: 2 }}>
+                    Error al cargar eventos: {error}
+                  </Typography>
+                  <Button 
+                    onClick={fetchEvents}
+                    variant="outlined"
+                    size="small"
+                    sx={{ textTransform: 'none' }}
+                  >
+                    Reintentar
+                  </Button>
+                </Box>
+              ) : eventosProgramados.length === 0 ? (
+                <Box sx={{ textAlign: 'center', py: 4 }}>
+                  <Typography variant="body1" sx={{ color: '#6B7280', fontSize: '16px' }}>
+                    No hay eventos programados
+                  </Typography>
+                </Box>
+              ) : (
+                <Box>
+                  <EventTable events={expandedSections.programados ? eventosProgramados : eventosProgramados.slice(0, 3)} />
+                  {eventosProgramados.length > 3 && (
+                    <Box sx={{ textAlign: 'center', py: 2 }}>
+                      <Button
+                        onClick={() => toggleSectionExpansion('programados')}
+                        variant="outlined"
+                        size="small"
+                        sx={{ 
+                          textTransform: 'none',
+                          borderRadius: '20px',
+                          px: 3,
+                          py: 1
+                        }}
+                      >
+                        {expandedSections.programados 
+                          ? `Ver menos (${eventosProgramados.length - 3} menos)` 
+                          : `Ver todos (${eventosProgramados.length - 3} más)`
+                        }
+                      </Button>
+                    </Box>
+                  )}
+                </Box>
+              )}
+            </CardContent>
+          </Card>
+        </Box>
 
-        <div>
-          <h2 className="text-base font-medium text-gray-900 mb-4">Lista de eventos pasados</h2>
-          <div className="bg-white rounded-lg border shadow-sm overflow-hidden">
-            <table className="w-full">
-              <thead>
-                <tr className="bg-gray-50 border-b">
-                  <th className="text-left py-3 px-4 font-medium text-gray-700">Fecha</th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-700">Entradas vendidas</th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-700">Ingresos totales</th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-700">Ver más</th>
-                </tr>
-              </thead>
-              <tbody>
-                {currentEventData.eventosPasados.map(evento => (
-                  <PastEventRow key={evento.id} evento={evento} />
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-    </div>
+        {/* Línea separadora */}
+        <Box sx={{ 
+          width: '100%', 
+          height: '2px', 
+          bgcolor: '#D9D9D9', 
+          mb: 4,
+          borderRadius: '1px'
+        }} />
+
+        {/* Eventos Pasados */}
+        <Box>
+          {/* Pestaña */}
+          <Box sx={{ 
+            bgcolor: '#6B7280',
+            color: 'white',
+            px: 2,
+            py: 1,
+            borderRadius: '12px 12px 0 0',
+            width: '30%',
+            zIndex: 0,
+            position: 'relative'
+          }}>
+            <Typography 
+              variant="h6" 
+              sx={{ 
+                color: 'white !important',
+                fontSize: '1rem',
+                fontWeight: '700 !important',
+                fontFamily: 'inherit',
+                m: 0
+              }}
+            >
+              Lista de eventos pasados
+            </Typography>
+          </Box>
+          
+          {/* Cuerpo del box */}
+          <Card elevation={3} sx={{ 
+            borderRadius: '0 12px 12px 12px', 
+            bgcolor: '#D9D9D9',
+            mt: -1,
+            position: 'relative',
+            zIndex: 1
+          }}>
+            <CardContent sx={{ p: 3 }}>
+              {loading ? (
+                <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 4 }}>
+                  <CircularProgress size={32} />
+                  <Typography variant="body1" sx={{ ml: 2, color: '#6B7280' }}>
+                    Cargando eventos...
+                  </Typography>
+                </Box>
+              ) : error ? (
+                <Box sx={{ textAlign: 'center', py: 4 }}>
+                  <Typography variant="body1" sx={{ color: '#EF4444', mb: 2 }}>
+                    Error al cargar eventos: {error}
+                  </Typography>
+                  <Button 
+                    onClick={fetchEvents}
+                    variant="outlined"
+                    size="small"
+                    sx={{ textTransform: 'none' }}
+                  >
+                    Reintentar
+                  </Button>
+                </Box>
+              ) : eventosPasados.length === 0 ? (
+                <Box sx={{ textAlign: 'center', py: 4 }}>
+                  <Typography variant="body1" sx={{ color: '#6B7280', fontSize: '16px' }}>
+                    No hay eventos pasados
+                  </Typography>
+                </Box>
+              ) : (
+                <Box>
+                  <EventTable events={expandedSections.pasados ? eventosPasados : eventosPasados.slice(0, 3)} />
+                  {eventosPasados.length > 3 && (
+                    <Box sx={{ textAlign: 'center', py: 2 }}>
+                      <Button
+                        onClick={() => toggleSectionExpansion('pasados')}
+                        variant="outlined"
+                        size="small"
+                        sx={{ 
+                          textTransform: 'none',
+                          borderRadius: '20px',
+                          px: 3,
+                          py: 1
+                        }}
+                      >
+                        {expandedSections.pasados 
+                          ? `Ver menos (${eventosPasados.length - 3} menos)` 
+                          : `Ver todos (${eventosPasados.length - 3} más)`
+                        }
+                      </Button>
+                    </Box>
+                  )}
+                </Box>
+              )}
+            </CardContent>
+          </Card>
+        </Box>
+      </Container>
+
+
+    </Box>
   );
 };
 
