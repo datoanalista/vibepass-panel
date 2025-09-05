@@ -1,5 +1,6 @@
 "use client";
 import React, { useState, useEffect } from 'react';
+import API_CONFIG from '../config/api';
 import {
   Box,
   Card,
@@ -64,7 +65,7 @@ const Usuarios = ({ onAddUser, onEditUser, selectedEventId }) => {
       }
       
       // Construir URL con filtro por evento
-      const url = `http://localhost:3001/api/users?eventoId=${selectedEventId}`;
+      const url = `${API_CONFIG.ENDPOINTS.USERS}?eventoId=${selectedEventId}`;
         
       const response = await fetch(url);
       const result = await response.json();
@@ -100,7 +101,7 @@ const Usuarios = ({ onAddUser, onEditUser, selectedEventId }) => {
       setDeletingUserId(userToDelete.id || userToDelete._id);
       setShowDeleteModal(false);
       
-      const response = await fetch(`http://localhost:3001/api/users/${userToDelete.id || userToDelete._id}`, {
+      const response = await fetch(API_CONFIG.ENDPOINTS.USER_BY_ID(userToDelete.id || userToDelete._id), {
         method: 'DELETE'
       });
 

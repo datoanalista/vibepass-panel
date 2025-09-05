@@ -20,11 +20,15 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
-  CircularProgress
+  CircularProgress,
+  Tooltip,
+  Snackbar,
+  Alert
 } from '@mui/material';
 import {
   Close as CloseIcon,
-  NavigateBefore as BackIcon
+  NavigateBefore as BackIcon,
+  ArrowBack as ArrowBackIcon
 } from '@mui/icons-material';
 import Header from '../../Header';
 
@@ -39,10 +43,19 @@ const DatosOrganizador = ({
   createEvent,
   createEventState,
   closeSuccessModal,
-  resetCreateEventError
+  resetCreateEventError,
+  isEditMode,
+  canSaveDraft,
+  saveAsDraft,
+  draftSaveState
 }) => {
   const router = useRouter();
   const steps = ['Información General', 'Configuración de Entradas', 'Alimentos y bebestibles', 'Actividades', 'Datos del Organizador'];
+
+  // Función para volver al panel de eventos
+  const handleBackToEvents = () => {
+    router.push('/events-overview');
+  };
 
   // Función para manejar éxito y navegación
   const handleSuccessAndNavigate = () => {
@@ -63,9 +76,28 @@ const DatosOrganizador = ({
             <Typography variant="h4" sx={{ fontSize: '24px', fontWeight: 600, color: '#374151' }}>
               Crear Nuevo Evento
             </Typography>
-            <IconButton onClick={handleCloseForm} sx={{ color: '#6B7280' }}>
-              <CloseIcon />
-            </IconButton>
+            <Tooltip title="Volver al panel de Eventos" arrow>
+              <Button
+                onClick={handleBackToEvents}
+                startIcon={<ArrowBackIcon />}
+                variant="outlined"
+                sx={{
+                  borderColor: '#D1D5DB',
+                  color: '#6B7280',
+                  '&:hover': {
+                    borderColor: '#9CA3AF',
+                    bgcolor: '#F9FAFB',
+                    cursor: 'pointer'
+                  },
+                  borderRadius: '8px',
+                  textTransform: 'none',
+                  px: 2,
+                  py: 1
+                }}
+              >
+                Volver al panel de Eventos
+              </Button>
+            </Tooltip>
           </Stack>
           
           {/* Stepper */}
@@ -359,7 +391,7 @@ const DatosOrganizador = ({
 
           {/* Footer Actions */}
           <Box sx={{ bgcolor: '#f8f9fa', p: 3, borderRadius: '0 0 12px 12px' }}>
-            <Stack direction="row" justifyContent="space-between">
+            <Stack direction="row" justifyContent="space-between" alignItems="center">
               <Button 
                 onClick={handlePrevStep}
                 variant="outlined"
@@ -379,23 +411,75 @@ const DatosOrganizador = ({
               >
                 Anterior
               </Button>
-              <Button 
-                onClick={createEvent}
-                disabled={!isStep5Valid || createEventState.loading}
-                variant="contained"
-                size="large"
-                color="success"
-                sx={{ 
-                  px: 4,
-                  borderRadius: '8px',
-                  textTransform: 'none',
-                  fontWeight: 500,
-                  fontSize: '14px'
-                }}
-                startIcon={createEventState.loading && <CircularProgress size={20} color="inherit" />}
-              >
-                {createEventState.loading ? 'Creando Evento...' : 'Crear Evento'}
-              </Button>
+              
+              <Stack direction="row" spacing={2}>
+                <Tooltip 
+                  title={
+                    !canSaveDraft 
+                      ? "Debe al menos completar este formulario para poder guardarlo"
+                      : draftSaveState.loading
+                      ? "Guardando borrador..."
+                      : draftSaveState.success
+                      ? "¡Borrador guardado exitosamente!"
+                      : draftSaveState.error
+                      ? `Error: ${draftSaveState.error}`
+                      : "Guardar borrador"
+                  }
+                  arrow
+                  placement="top"
+                >
+                  <span>
+                    <Button 
+                      onClick={saveAsDraft}
+                      disabled={!canSaveDraft || draftSaveState.loading}
+                      variant="outlined"
+                      size="large"
+                      startIcon={draftSaveState.loading ? <CircularProgress size={16} color="inherit" /> : null}
+                      sx={{
+                        borderRadius: '8px',
+                        textTransform: 'none',
+                        fontWeight: 500,
+                        fontSize: '14px',
+                        px: 4,
+                        color: canSaveDraft ? '#F59E0B' : '#9CA3AF',
+                        borderColor: canSaveDraft ? '#F59E0B' : '#E5E7EB',
+                        '&:hover': canSaveDraft ? {
+                          borderColor: '#D97706',
+                          bgcolor: '#FEF3C7'
+                        } : {},
+                        '&:disabled': {
+                          color: '#9CA3AF',
+                          borderColor: '#E5E7EB',
+                          bgcolor: '#F9FAFB'
+                        }
+                      }}
+                    >
+                      {draftSaveState.loading ? 'Guardando...' : 'Guardar Borrador'}
+                    </Button>
+                  </span>
+                </Tooltip>
+                
+                <Button 
+                  onClick={createEvent}
+                  disabled={!isStep5Valid || createEventState.loading}
+                  variant="contained"
+                  size="large"
+                  color="success"
+                  sx={{ 
+                    px: 4,
+                    borderRadius: '8px',
+                    textTransform: 'none',
+                    fontWeight: 500,
+                    fontSize: '14px'
+                  }}
+                  startIcon={createEventState.loading && <CircularProgress size={20} color="inherit" />}
+                >
+                  {createEventState.loading 
+                    ? (isEditMode ? 'Actualizando Evento...' : 'Creando Evento...') 
+                    : (isEditMode ? 'Actualizar Evento' : 'Crear Evento')
+                  }
+                </Button>
+              </Stack>
             </Stack>
           </Box>
           </Card>
@@ -464,6 +548,25 @@ const DatosOrganizador = ({
           </DialogActions>
         </Dialog>
       )}
+      
+      {/* Snackbar para notificaciones */}
+      <Snackbar
+        open={draftSaveState.showTooltip}
+        autoHideDuration={draftSaveState.success ? 3000 : 5000}
+        onClose={() => setDraftSaveState(prev => ({ ...prev, showTooltip: false }))}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert 
+          onClose={() => setDraftSaveState(prev => ({ ...prev, showTooltip: false }))} 
+          severity={draftSaveState.success ? 'success' : 'error'}
+          sx={{ width: '100%' }}
+        >
+          {draftSaveState.success 
+            ? '¡Borrador guardado exitosamente!' 
+            : draftSaveState.error
+          }
+        </Alert>
+      </Snackbar>
     </>
   );
 };

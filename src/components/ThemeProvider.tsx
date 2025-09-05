@@ -37,7 +37,7 @@ interface CustomThemeProviderProps {
   children: React.ReactNode;
 }
 
-export default function CustomThemeProvider({ children }: CustomThemeProviderProps) {
+const CustomThemeProvider = ({ children }: CustomThemeProviderProps) => {
   return (
     <ThemeProvider theme={figmaTheme}>
       <CssBaseline />
@@ -46,4 +46,6 @@ export default function CustomThemeProvider({ children }: CustomThemeProviderPro
       </LocalizationProvider>
     </ThemeProvider>
   );
-}
+};
+
+export default CustomThemeProvider;

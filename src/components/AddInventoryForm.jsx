@@ -1,5 +1,6 @@
 "use client";
 import React, { useState } from 'react';
+import API_CONFIG from '../config/api';
 import {
   Box,
   Card,
@@ -85,6 +86,8 @@ const AddInventoryForm = ({
   
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [createdProductName, setCreatedProductName] = useState('');
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
 
 
 
@@ -98,7 +101,7 @@ const AddInventoryForm = ({
       const formData = new FormData();
       formData.append('images', file); // El endpoint espera 'images'
 
-      const response = await fetch('http://localhost:3001/api/upload/products', {
+      const response = await fetch(API_CONFIG.ENDPOINTS.UPLOAD_PRODUCTS, {
         method: 'POST',
         body: formData,
       });
@@ -146,7 +149,7 @@ const AddInventoryForm = ({
     try {
       setLocalCreateLoading(true);
       
-      const response = await fetch('http://localhost:3001/api/inventory', {
+      const response = await fetch(API_CONFIG.ENDPOINTS.INVENTORY, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -190,7 +193,16 @@ const AddInventoryForm = ({
       }
     } catch (error) {
       console.error('❌ Error al crear producto:', error);
-      alert(`Error al crear producto: ${error.message}`);
+      // Limpiar el mensaje de error para mostrar solo información útil
+      let cleanMessage = error.message;
+      if (cleanMessage.includes('Validation error:')) {
+        cleanMessage = cleanMessage.replace('Validation error: ', '');
+      }
+      if (cleanMessage.includes('Error al crear producto:')) {
+        cleanMessage = cleanMessage.replace('Error al crear producto: ', '');
+      }
+      setErrorMessage(cleanMessage);
+      setShowErrorModal(true);
     } finally {
       setLocalCreateLoading(false);
     }
@@ -618,6 +630,77 @@ const AddInventoryForm = ({
             }}
           >
             Aceptar
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Modal de Error */}
+      <Dialog 
+        open={showErrorModal} 
+        onClose={() => setShowErrorModal(false)}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: '16px',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+            overflow: 'hidden'
+          }
+        }}
+      >
+        <DialogTitle sx={{ 
+          pb: 1,
+          background: 'linear-gradient(135deg, #0F172A 0%, #1E293B 100%)',
+          color: 'white',
+          borderRadius: '16px 16px 0 0',
+          border: 'none',
+          overflow: 'hidden'
+        }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <ErrorIcon sx={{ fontSize: 32, color: 'white !important' }} />
+            <Box>
+              <Typography variant="h6" sx={{ fontWeight: 700, mb: 0.5, color: 'white !important' }}>
+                Error al Crear Producto
+              </Typography>
+              <Typography variant="body2" sx={{ opacity: 0.9, color: 'white !important' }}>
+                Se produjo un error durante la creación del producto
+              </Typography>
+            </Box>
+          </Box>
+        </DialogTitle>
+        
+        <DialogContent sx={{ p: 3, pt: 6 }}>
+          <Box sx={{ 
+            p: 2, 
+            mt: 2,
+            bgcolor: '#FEF2F2', 
+            borderRadius: '8px',
+            border: '1px solid #FECACA'
+          }}>
+            <Typography variant="body2" sx={{ color: '#991B1B', fontWeight: 600, mb: 1 }}>
+              ⚠️ Importante!
+            </Typography>
+            <Typography variant="body2" sx={{ color: '#7F1D1D', fontSize: '14px' }}>
+              • Verifica que la descripción tenga entre 5 y 1000 caracteres
+              • Asegúrate de que todos los campos requeridos estén completos
+              • Revisa que la imagen sea válida y no exceda el tamaño permitido
+            </Typography>
+          </Box>
+        </DialogContent>
+        
+        <DialogActions sx={{ p: 3, pt: 0 }}>
+          <Button 
+            onClick={() => setShowErrorModal(false)}
+            variant="contained"
+            sx={{ 
+              bgcolor: '#0F172A',
+              '&:hover': { bgcolor: '#1E293B' },
+              borderRadius: '8px',
+              textTransform: 'none',
+              px: 3
+            }}
+          >
+            Entendido
           </Button>
         </DialogActions>
       </Dialog>

@@ -1,5 +1,6 @@
 "use client";
 import React, { useState, useEffect } from 'react';
+import API_CONFIG from '../config/api';
 import {
   Box,
   Button,
@@ -47,7 +48,7 @@ const Inventario = ({ onAddInventory, onEditInventory, selectedEventId }) => {
       }
       
       // Construir URL con filtro por evento
-      const url = `http://localhost:3001/api/inventory?eventoId=${selectedEventId}`;
+      const url = `${API_CONFIG.ENDPOINTS.INVENTORY}?eventoId=${selectedEventId}`;
         
       const response = await fetch(url);
       const result = await response.json();
@@ -83,7 +84,7 @@ const Inventario = ({ onAddInventory, onEditInventory, selectedEventId }) => {
       setDeletingItemId(itemToDelete.id || itemToDelete._id);
       setShowDeleteModal(false);
       
-      const response = await fetch(`http://localhost:3001/api/inventory/${itemToDelete.id || itemToDelete._id}`, {
+      const response = await fetch(API_CONFIG.ENDPOINTS.INVENTORY_BY_ID(itemToDelete.id || itemToDelete._id), {
         method: 'DELETE'
       });
 

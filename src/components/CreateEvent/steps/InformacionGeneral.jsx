@@ -17,20 +17,25 @@ import {
   StepLabel,
   IconButton,
   Chip,
-  CircularProgress
+  CircularProgress,
+  Tooltip,
+  Snackbar,
+  Alert
 } from '@mui/material';
 import {
   Close as CloseIcon,
   Upload as UploadIcon,
   NavigateNext as NextIcon,
   CheckCircle as CheckIcon,
-  Error as ErrorIcon
+  Error as ErrorIcon,
+  ArrowBack as ArrowBackIcon
 } from '@mui/icons-material';
 import DatePicker from 'react-datepicker';
 import "react-datepicker/dist/react-datepicker.css";
 import { registerLocale, setDefaultLocale } from "react-datepicker";
 import es from 'date-fns/locale/es';
 import dayjs from 'dayjs';
+import { useRouter } from 'next/navigation';
 import Header from '../../Header';
 
 const InformacionGeneral = ({ 
@@ -40,11 +45,21 @@ const InformacionGeneral = ({
   handleNextStep, 
   isStep1Valid,
   uploadBanner,
-  uploadStates 
+  uploadStates,
+  canSaveDraft,
+  saveAsDraft,
+  draftSaveState
 }) => {
+  const router = useRouter();
+  
   // Registrar y configurar la localización en español
   registerLocale('es', es);
   setDefaultLocale('es');
+  
+  // Función para volver al panel de eventos
+  const handleBackToEvents = () => {
+    router.push('/events-overview');
+  };
   const handleFileChange = (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -55,18 +70,14 @@ const InformacionGeneral = ({
 
   // Helper function para manejar fechas de manera consistente
   const parseDate = (dateString) => {
-    console.log('🔍 parseDate - dateString recibido:', dateString);
-    if (!dateString) {
-      console.log('🔍 parseDate - dateString vacío, retornando null');
+    if (!dateString || dateString.trim() === '') {
       return null;
     }
     // Si la fecha incluye tiempo (ISO format), extraer solo la parte de fecha
     if (typeof dateString === 'string' && dateString.includes('T')) {
       dateString = dateString.split('T')[0];
-      console.log('🔍 parseDate - fecha después de split T:', dateString);
     }
     const parsedDate = dayjs(dateString).toDate();
-    console.log('🔍 parseDate - fecha parseada:', parsedDate);
     return parsedDate;
   };
 
@@ -84,9 +95,28 @@ const InformacionGeneral = ({
             <Typography variant="h4" sx={{ fontSize: '24px', fontWeight: 600, color: '#374151' }}>
               Crear Nuevo Evento
             </Typography>
-            <IconButton onClick={handleCloseForm} sx={{ color: '#6B7280' }}>
-              <CloseIcon />
-            </IconButton>
+            <Tooltip title="Volver al panel de Eventos" arrow>
+              <Button
+                onClick={handleBackToEvents}
+                startIcon={<ArrowBackIcon />}
+                variant="outlined"
+                sx={{
+                  borderColor: '#D1D5DB',
+                  color: '#6B7280',
+                  '&:hover': {
+                    borderColor: '#9CA3AF',
+                    bgcolor: '#F9FAFB',
+                    cursor: 'pointer'
+                  },
+                  borderRadius: '8px',
+                  textTransform: 'none',
+                  px: 2,
+                  py: 1
+                }}
+              >
+                Volver al panel de Eventos
+              </Button>
+            </Tooltip>
           </Stack>
           
           {/* Stepper */}
@@ -212,18 +242,14 @@ const InformacionGeneral = ({
                   <DatePicker
                     selected={parseDate(eventFormData.fechaEvento)}
                     onChange={(date) => {
-                      console.log('🗓️ DatePicker onChange - date recibido:', date);
                       if (date) {
                         // Usar UTC para evitar problemas de zona horaria
                         const year = date.getFullYear();
                         const month = String(date.getMonth() + 1).padStart(2, '0');
                         const day = String(date.getDate()).padStart(2, '0');
                         const formattedDate = `${year}-${month}-${day}`;
-                        console.log('🗓️ DatePicker onChange - fecha formateada:', formattedDate);
-                        console.log('🗓️ DatePicker onChange - año:', year, 'mes:', month, 'día:', day);
                         handleFormChange('fechaEvento', formattedDate);
                       } else {
-                        console.log('🗓️ DatePicker onChange - fecha vacía');
                         handleFormChange('fechaEvento', '');
                       }
                     }}
@@ -481,7 +507,7 @@ const InformacionGeneral = ({
 
           {/* Footer Actions */}
           <Box sx={{ bgcolor: 'grey.50', p: 3, borderRadius: '0 0 12px 12px' }}>
-            <Stack direction="row" justifyContent="space-between">
+            <Stack direction="row" justifyContent="space-between" alignItems="center">
               <Button 
                 onClick={handleCloseForm}
                 variant="outlined"
@@ -503,38 +529,107 @@ const InformacionGeneral = ({
               >
                 Cancelar
               </Button>
-              <Button 
-                onClick={handleNextStep}
-                disabled={!isStep1Valid}
-                variant="outlined"
-                endIcon={<NextIcon />}
-                sx={{ 
-                  bgcolor: '#D9D9D9 !important',
-                  color: '#374151 !important',
-                  border: '1px solid #A3A3A3 !important',
-                  px: 3,
-                  py: 1,
-                  borderRadius: '10px',
-                  textTransform: 'none',
-                  fontWeight: 500,
-                  fontSize: '14px',
-                  '&:hover': {
-                    bgcolor: '#C9C9C9 !important',
-                    borderColor: '#939393 !important'
-                  },
-                  '&:disabled': {
-                    bgcolor: '#B0B0B0 !important',
-                    color: '#666666 !important'
+              
+              <Stack direction="row" spacing={2}>
+                <Tooltip 
+                  title={
+                    !canSaveDraft 
+                      ? "Debe al menos completar este formulario para poder guardarlo"
+                      : draftSaveState.loading
+                      ? "Guardando borrador..."
+                      : draftSaveState.success
+                      ? "¡Borrador guardado exitosamente!"
+                      : draftSaveState.error
+                      ? `Error: ${draftSaveState.error}`
+                      : "Guardar borrador"
                   }
-                }}
-              >
-                Siguiente
-              </Button>
+                  arrow
+                  placement="top"
+                >
+                  <span>
+                    <Button 
+                      onClick={saveAsDraft}
+                      disabled={!canSaveDraft || draftSaveState.loading}
+                      variant="outlined"
+                      startIcon={draftSaveState.loading ? <CircularProgress size={16} color="inherit" /> : null}
+                      sx={{
+                        borderRadius: '10px',
+                        textTransform: 'none',
+                        fontWeight: 500,
+                        fontSize: '14px',
+                        px: 3,
+                        py: 1,
+                        color: canSaveDraft ? '#F59E0B' : '#9CA3AF',
+                        borderColor: canSaveDraft ? '#F59E0B' : '#E5E7EB',
+                        bgcolor: canSaveDraft ? 'transparent' : '#F9FAFB',
+                        '&:hover': canSaveDraft ? {
+                          borderColor: '#D97706',
+                          bgcolor: '#FEF3C7'
+                        } : {},
+                        '&:disabled': {
+                          color: '#9CA3AF',
+                          borderColor: '#E5E7EB',
+                          bgcolor: '#F9FAFB'
+                        }
+                      }}
+                    >
+                      {draftSaveState.loading ? 'Guardando...' : 'Guardar Borrador'}
+                    </Button>
+                  </span>
+                </Tooltip>
+                
+                <Button 
+                  onClick={handleNextStep}
+                  disabled={!isStep1Valid}
+                  variant="outlined"
+                  endIcon={<NextIcon />}
+                  sx={{ 
+                    bgcolor: '#D9D9D9 !important',
+                    color: '#374151 !important',
+                    border: '1px solid #A3A3A3 !important',
+                    px: 3,
+                    py: 1,
+                    borderRadius: '10px',
+                    textTransform: 'none',
+                    fontWeight: 500,
+                    fontSize: '14px',
+                    '&:hover': {
+                      bgcolor: '#C9C9C9 !important',
+                      borderColor: '#939393 !important'
+                    },
+                    '&:disabled': {
+                      bgcolor: '#B0B0B0 !important',
+                      color: '#666666 !important'
+                    }
+                  }}
+                >
+                  Siguiente
+                </Button>
+              </Stack>
             </Stack>
           </Box>
           </Card>
         </Box>
       </Box>
+      
+      {/* Snackbar para notificaciones */}
+      <Snackbar
+        open={draftSaveState.showTooltip}
+        autoHideDuration={draftSaveState.success ? 3000 : 5000}
+        onClose={() => setDraftSaveState(prev => ({ ...prev, showTooltip: false }))}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert 
+          onClose={() => setDraftSaveState(prev => ({ ...prev, showTooltip: false }))} 
+          severity={draftSaveState.success ? 'success' : 'error'}
+          sx={{ width: '100%' }}
+        >
+          {draftSaveState.success 
+            ? '¡Borrador guardado exitosamente!' 
+            : draftSaveState.error
+          }
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };

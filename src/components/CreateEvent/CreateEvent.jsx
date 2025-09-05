@@ -17,6 +17,7 @@ const CreateEvent = ({ onClose }) => {
     eventFormData,
     uploadStates,
     createEventState,
+    draftSaveState,
     isEditMode,
     editingEventId,
     
@@ -32,6 +33,7 @@ const CreateEvent = ({ onClose }) => {
     isStep3Valid,
     isStep4Valid,
     isStep5Valid,
+    canSaveDraft,
     
     // CRUD Entradas
     addEntrada,
@@ -58,6 +60,7 @@ const CreateEvent = ({ onClose }) => {
     
     // Creación de evento
     createEvent,
+    saveAsDraft,
     closeSuccessModal,
     resetCreateEventError,
   } = useEventForm();
@@ -82,6 +85,9 @@ const CreateEvent = ({ onClose }) => {
             uploadBanner={uploadBanner}
             uploadStates={uploadStates}
             isEditMode={isEditMode}
+            canSaveDraft={canSaveDraft}
+            saveAsDraft={saveAsDraft}
+            draftSaveState={draftSaveState}
           />
         );
       case 2:
@@ -96,6 +102,9 @@ const CreateEvent = ({ onClose }) => {
             handlePrevStep={handlePrevStep}
             isStep2Valid={isStep2Valid}
             isEditMode={isEditMode}
+            canSaveDraft={canSaveDraft}
+            saveAsDraft={saveAsDraft}
+            draftSaveState={draftSaveState}
           />
         );
       case 3:
@@ -112,6 +121,9 @@ const CreateEvent = ({ onClose }) => {
             uploadProductImage={uploadProductImage}
             uploadStates={uploadStates}
             isEditMode={isEditMode}
+            canSaveDraft={canSaveDraft}
+            saveAsDraft={saveAsDraft}
+            draftSaveState={draftSaveState}
           />
         );
       case 4:
@@ -128,6 +140,9 @@ const CreateEvent = ({ onClose }) => {
             uploadActivityImage={uploadActivityImage}
             uploadStates={uploadStates}
             isEditMode={isEditMode}
+            canSaveDraft={canSaveDraft}
+            saveAsDraft={saveAsDraft}
+            draftSaveState={draftSaveState}
           />
         );
       case 5:
@@ -144,6 +159,9 @@ const CreateEvent = ({ onClose }) => {
             closeSuccessModal={closeSuccessModal}
             resetCreateEventError={resetCreateEventError}
             isEditMode={isEditMode}
+            canSaveDraft={canSaveDraft}
+            saveAsDraft={saveAsDraft}
+            draftSaveState={draftSaveState}
           />
         );
       default:

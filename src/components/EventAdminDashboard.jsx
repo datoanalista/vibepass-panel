@@ -1,6 +1,65 @@
 "use client";
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import API_CONFIG from '../config/api';
+
+// Función para determinar el estado del evento según la hora actual
+const getEventStatus = (event) => {
+  if (!event?.informacionGeneral?.fechaEvento || !event?.informacionGeneral?.horaInicio || !event?.informacionGeneral?.horaTermino) {
+    return { status: 'programado', message: 'Evento programado', color: '#3B82F6' };
+  }
+
+  const now = new Date();
+  
+  // Crear fecha del evento en formato local (YYYY-MM-DD)
+  const eventDateString = event.informacionGeneral.fechaEvento; // "2025-09-03"
+  const [year, month, day] = eventDateString.split('-');
+  const eventDate = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+  
+  // Crear fecha de hoy en formato local (sin horas)
+  const today = new Date();
+  const todayDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const eventDateOnly = new Date(eventDate.getFullYear(), eventDate.getMonth(), eventDate.getDate());
+  
+  console.log('🔍 DEBUG - Event date string:', eventDateString);
+  console.log('🔍 DEBUG - Today date:', todayDate.toDateString());
+  console.log('🔍 DEBUG - Event date only:', eventDateOnly.toDateString());
+  console.log('🔍 DEBUG - Are dates equal?', eventDateOnly.getTime() === todayDate.getTime());
+  console.log('🔍 DEBUG - Current time:', now.toISOString());
+  console.log('🔍 DEBUG - Event times:', event.informacionGeneral.horaInicio, 'to', event.informacionGeneral.horaTermino);
+  
+  // Si no es el día del evento
+  if (eventDateOnly.getTime() !== todayDate.getTime()) {
+    if (eventDateOnly > todayDate) {
+      return { status: 'programado', message: 'Evento programado', color: '#3B82F6' };
+    } else {
+      return { status: 'realizado', message: 'Evento realizado', color: '#6B7280' };
+    }
+  }
+
+  // Es el día del evento, verificar horas
+  const startTime = new Date(`${eventDateString}T${event.informacionGeneral.horaInicio}:00`);
+  const endTime = new Date(`${eventDateString}T${event.informacionGeneral.horaTermino}:00`);
+
+  if (now < startTime) {
+    // Evento por comenzar - calcular tiempo restante
+    const timeDiff = startTime - now;
+    const hours = Math.floor(timeDiff / (1000 * 60 * 60));
+    const minutes = Math.floor((timeDiff % (1000 * 60 * 60)) / (1000 * 60));
+    const seconds = Math.floor((timeDiff % (1000 * 60)) / 1000);
+    
+    return {
+      status: 'por_comenzar',
+      message: `Evento comenzará en ${hours}h ${minutes}m ${seconds}s`,
+      color: '#EF4444',
+      timeDiff
+    };
+  } else if (now >= startTime && now <= endTime) {
+    return { status: 'en_curso', message: 'Evento en curso', color: '#10B981' };
+  } else {
+    return { status: 'finalizado', message: 'Evento finalizado', color: '#3B82F6' };
+  }
+};
 import {
   Box,
   Typography,
@@ -53,7 +112,7 @@ const CalendarComponent = ({ selectedEventId }) => {
 
   const fetchEventDate = async () => {
     try {
-      const response = await fetch(`http://localhost:3001/api/events/${selectedEventId}`);
+      const response = await fetch(API_CONFIG.ENDPOINTS.EVENT_BY_ID(selectedEventId));
       const eventData = await response.json();
       
       const actualEventData = eventData.data?.event || eventData.data || eventData;
@@ -246,7 +305,7 @@ const EventAdminDashboard = () => {
     try {
       setEventsLoading(true);
       
-      const response = await fetch('http://localhost:3001/api/events');
+      const response = await fetch(API_CONFIG.ENDPOINTS.EVENTS);
       const result = await response.json();
       
       if (response.ok && result.status === 'success') {
@@ -285,7 +344,7 @@ const EventAdminDashboard = () => {
         eventoId: selectedEventId
       };
       
-      const response = await fetch('http://localhost:3001/api/users', {
+      const response = await fetch(API_CONFIG.ENDPOINTS.USERS, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -336,7 +395,7 @@ const EventAdminDashboard = () => {
     try {
       setCreateUserLoading(true);
       
-      const response = await fetch(`http://localhost:3001/api/users/${editingUser._id || editingUser.id}`, {
+      const response = await fetch(API_CONFIG.ENDPOINTS.USER_BY_ID(editingUser._id || editingUser.id), {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -396,7 +455,7 @@ const EventAdminDashboard = () => {
     try {
       setCreateInventoryLoading(true);
       
-      const response = await fetch(`http://localhost:3001/api/inventory/${editingInventory.id || editingInventory._id}`, {
+      const response = await fetch(API_CONFIG.ENDPOINTS.INVENTORY_BY_ID(editingInventory.id || editingInventory._id), {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -762,17 +821,27 @@ const EventAdminDashboard = () => {
     </Box>
   );
 
-  const DashboardView = () => {
+    const DashboardView = () => {
          const [dashboardData, setDashboardData] = useState({
-       totalVentas: 0,
-       ventasDelDia: 0,
-       registradosNuevos: 0,
-       ventasDetalle: [],
-       eventoActivo: 'programado'
-     });
+      totalVentas: 0,
+      ventasDelDia: 0,
+      registradosNuevos: 0,
+      ventasDetalle: [],
+      eventoActivo: 'programado'
+    });
     const [loading, setLoading] = useState(true);
+    const [currentTime, setCurrentTime] = useState(new Date());
     const [inventory, setInventory] = useState([]);
     const [showAllAgendables, setShowAllAgendables] = useState(false);
+
+    // useEffect para actualizar el tiempo cada segundo (para el contador)
+    useEffect(() => {
+      const timer = setInterval(() => {
+        setCurrentTime(new Date());
+      }, 1000);
+
+      return () => clearInterval(timer);
+    }, []);
 
     useEffect(() => {
       if (selectedEventId) {
@@ -780,16 +849,32 @@ const EventAdminDashboard = () => {
       }
     }, [selectedEventId]);
 
+    // useEffect para recalcular el estado del evento cuando cambie el tiempo
+    useEffect(() => {
+      if (selectedEvent && dashboardData.eventStatus) {
+        const newEventStatus = getEventStatus(selectedEvent);
+        
+        if (newEventStatus.status !== dashboardData.eventStatus.status || 
+            newEventStatus.message !== dashboardData.eventStatus.message) {
+          setDashboardData(prev => ({
+            ...prev,
+            eventoActivo: newEventStatus.status,
+            eventStatus: newEventStatus
+          }));
+        }
+      }
+    }, [currentTime, selectedEvent]);
+
     const fetchDashboardData = async () => {
       try {
         setLoading(true);
         
-        const usersResponse = await fetch(`http://localhost:3001/api/users?eventoId=${selectedEventId}`);
+        const usersResponse = await fetch(`${API_CONFIG.ENDPOINTS.USERS}?eventoId=${selectedEventId}`);
         const usersData = await usersResponse.json();
         
         const users = Array.isArray(usersData) ? usersData : (usersData.data?.users || usersData.data?.items || usersData.users || usersData.data || []);
         
-        const inventoryResponse = await fetch(`http://localhost:3001/api/inventory?eventoId=${selectedEventId}`);
+        const inventoryResponse = await fetch(`${API_CONFIG.ENDPOINTS.INVENTORY}?eventoId=${selectedEventId}`);
         const inventoryData = await inventoryResponse.json();
         
         const inventoryArray = Array.isArray(inventoryData) ? inventoryData : (inventoryData.data?.items || inventoryData.inventory || inventoryData.data || []);
@@ -821,29 +906,16 @@ const EventAdminDashboard = () => {
           monto
         }));
         
-        // Determinar el estado del evento basándose en la fecha
-        let eventoActivo = true;
-        if (selectedEvent && selectedEvent.informacionGeneral?.fechaEvento) {
-          const eventDate = new Date(selectedEvent.informacionGeneral.fechaEvento);
-          const today = new Date();
-          today.setHours(0, 0, 0, 0); // Resetear horas para comparar solo fechas
-          eventDate.setHours(0, 0, 0, 0);
-          
-          if (eventDate > today) {
-            eventoActivo = 'programado'; // Evento futuro
-          } else if (eventDate < today) {
-            eventoActivo = 'realizado'; // Evento pasado
-          } else {
-            eventoActivo = 'activo'; // Evento hoy
-          }
-        }
+        // Determinar el estado del evento usando la nueva función
+        const eventStatus = getEventStatus(selectedEvent);
          
          setDashboardData({
            totalVentas,
            ventasDelDia,
            registradosNuevos,
            ventasDetalle: ventasDetalleArray,
-           eventoActivo
+           eventoActivo: eventStatus.status,
+           eventStatus: eventStatus
          });
       } catch (error) {
         console.error('Error fetching dashboard data:', error);
@@ -852,7 +924,8 @@ const EventAdminDashboard = () => {
            ventasDelDia: 0,
            registradosNuevos: 0,
            ventasDetalle: [],
-           eventoActivo: 'programado'
+           eventoActivo: 'programado',
+           eventStatus: { status: 'programado', message: 'Evento programado', color: '#3B82F6' }
          });
       } finally {
         setLoading(false);
@@ -880,12 +953,10 @@ const EventAdminDashboard = () => {
               width: 12, 
               height: 12, 
               borderRadius: '50%', 
-              bgcolor: dashboardData.eventoActivo === 'activo' ? '#10B981' : 
-                      dashboardData.eventoActivo === 'programado' ? '#3B82F6' : '#6B7280'
+              bgcolor: dashboardData.eventStatus?.color || '#3B82F6'
             }} />
             <Typography variant="h6" sx={{ color: '#374151', fontWeight: 600 }}>
-              {dashboardData.eventoActivo === 'activo' ? 'Evento activo' : 
-               dashboardData.eventoActivo === 'programado' ? 'Evento programado' : 'Evento realizado'}
+              {dashboardData.eventStatus?.message || 'Evento programado'}
             </Typography>
             <Box sx={{ flexGrow: 1 }} />
             <Button 
