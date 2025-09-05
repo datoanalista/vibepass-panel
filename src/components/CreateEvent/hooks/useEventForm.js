@@ -26,6 +26,11 @@ export const useEventForm = () => {
     error: null,
     showTooltip: false
   });
+
+  const [formLoadingState, setFormLoadingState] = useState({
+    loading: false,
+    message: ''
+  });
   const [eventFormData, setEventFormData] = useState({
     nombreEvento: '',
     descripcion: '',
@@ -46,6 +51,54 @@ export const useEventForm = () => {
     permiteDevolucion: null
   });
 
+  // Función optimizada para mapear entradas
+  const mapEntradas = useCallback((entradas) => {
+    if (!entradas || !Array.isArray(entradas)) return [];
+    return entradas.map(entrada => ({
+      id: entrada.id,
+      tipoEntrada: entrada.tipoEntrada || '',
+      precio: entrada.precio || '',
+      cuposDisponibles: entrada.cuposDisponibles || '',
+      limitePorPersona: entrada.limitePorPersona || '',
+      fechasVenta: {
+        inicio: entrada.fechasVenta?.inicio || '',
+        fin: entrada.fechasVenta?.fin || ''
+      },
+      entradasVendidas: entrada.entradasVendidas || 0,
+      activa: entrada.activa !== undefined ? entrada.activa : true
+    }));
+  }, []);
+
+  // Función optimizada para mapear alimentos y bebestibles
+  const mapAlimentosBebestibles = useCallback((alimentos) => {
+    if (!alimentos || !Array.isArray(alimentos)) return [];
+    return alimentos.map(alimento => ({
+      id: alimento.id,
+      nombre: alimento.nombre || '',
+      precioUnitario: alimento.precioUnitario || '',
+      stockAsignado: alimento.stockAsignado || '',
+      descripcion: alimento.descripcion || '',
+      imagen: null,
+      imagenUrl: alimento.imagen || ''
+    }));
+  }, []);
+
+  // Función optimizada para mapear actividades
+  const mapActividades = useCallback((actividades) => {
+    if (!actividades || !Array.isArray(actividades)) return [];
+    return actividades.map(actividad => ({
+      id: actividad.id,
+      nombreActividad: actividad.nombreActividad || '',
+      precioUnitario: actividad.precioUnitario || '',
+      cuposDisponibles: actividad.cuposDisponibles || '',
+      horaInicio: actividad.horaInicio || '',
+      horaTermino: actividad.horaTermino || '',
+      descripcion: actividad.descripcion || '',
+      imagenPromocional: null,
+      imagenPromocionalUrl: actividad.imagenPromocional || ''
+    }));
+  }, []);
+
   // useEffect para cargar datos del evento en modo edición o borrador
   useEffect(() => {
     const loadEventData = async () => {
@@ -55,6 +108,14 @@ export const useEventForm = () => {
         const mode = urlParams.get('mode');
         const editDraftId = urlParams.get('editDraft');
         
+        // Si hay datos para cargar, mostrar estado de carga
+        if (mode === 'edit' || editDraftId) {
+          setFormLoadingState({
+            loading: true,
+            message: mode === 'edit' ? 'Cargando evento...' : 'Cargando borrador...'
+          });
+        }
+        
         if (mode === 'edit') {
           const editingEventData = localStorage.getItem('editingEvent');
           
@@ -63,8 +124,10 @@ export const useEventForm = () => {
             setIsEditMode(true);
             setEditingEventId(eventData.id);
             
-            // Cargar datos del evento en el formulario
-            setEventFormData({
+            // Cargar datos del evento en el formulario (optimizado)
+            console.log('⚡ Iniciando carga optimizada del evento...');
+            
+            const formData = {
               nombreEvento: eventData.informacionGeneral?.nombreEvento || '',
               descripcion: eventData.informacionGeneral?.descripcion || '',
               fechaEvento: eventData.informacionGeneral?.fechaEvento ? 
@@ -76,63 +139,69 @@ export const useEventForm = () => {
               lugarEvento: eventData.informacionGeneral?.lugarEvento || '',
               bannerPromocional: null,
               bannerUrl: eventData.informacionGeneral?.bannerPromocional || eventData.imagenPrincipal || '',
-              entradas: (eventData.entradas || []).map(entrada => ({
-                id: entrada.id,
-                tipoEntrada: entrada.tipoEntrada || '',
-                precio: entrada.precio || '',
-                cuposDisponibles: entrada.cuposDisponibles || '',
-                limitePorPersona: entrada.limitePorPersona || '',
-                fechasVenta: {
-                  inicio: entrada.fechasVenta?.inicio || '',
-                  fin: entrada.fechasVenta?.fin || ''
-                },
-                entradasVendidas: entrada.entradasVendidas || 0,
-                activa: entrada.activa !== undefined ? entrada.activa : true
-              })),
-              alimentosBebestibles: (eventData.alimentosBebestibles || []).map(alimento => ({
-                id: alimento.id,
-                nombre: alimento.nombre || '',
-                precioUnitario: alimento.precioUnitario || '',
-                stockAsignado: alimento.stockAsignado || '',
-                descripcion: alimento.descripcion || '',
-                imagen: null,
-                imagenUrl: alimento.imagen || ''
-              })),
-              actividades: (eventData.actividades || []).map(actividad => ({
-                id: actividad.id,
-                nombreActividad: actividad.nombreActividad || '',
-                precioUnitario: actividad.precioUnitario || '',
-                cuposDisponibles: actividad.cuposDisponibles || '',
-                horaInicio: actividad.horaInicio || '',
-                horaTermino: actividad.horaTermino || '',
-                descripcion: actividad.descripcion || '',
-                imagenPromocional: null,
-                imagenPromocionalUrl: actividad.imagenPromocional || ''
-              })),
+              entradas: mapEntradas(eventData.entradas),
+              alimentosBebestibles: mapAlimentosBebestibles(eventData.alimentosBebestibles),
+              actividades: mapActividades(eventData.actividades),
               nombreOrganizador: eventData.organizador?.nombreOrganizador || '',
               correoElectronico: eventData.organizador?.correoElectronico || '',
               telefonoContacto: eventData.organizador?.telefonoContacto || '',
               nombreEmpresaColegio: eventData.organizador?.nombreEmpresaColegio || '',
               rutEmpresa: eventData.organizador?.rutEmpresa || '',
               permiteDevolucion: eventData.configuracion?.permiteDevolucion || null
-            });
+            };
+            
+            console.log('⚡ Evento optimizado preparado, aplicando...');
+            setEventFormData(formData);
+            console.log('✅ Evento cargado exitosamente');
+            
+            // Cerrar estado de carga
+            setFormLoadingState({ loading: false, message: '' });
           }
         } else if (editDraftId) {
           // Cargar borrador desde la API
+          console.log('📝 Cargando borrador para editar:', editDraftId);
           
           try {
             const response = await fetch(`http://localhost:3001/api/drafts/${editDraftId}`);
             const result = await response.json();
             
+            console.log('📥 Respuesta del borrador:', result);
+            
             if (result.status === 'success' && result.data.draft) {
               const draftData = result.data.draft;
               
-              setIsEditMode(true);
-              setEditingEventId(draftData._id);
-              setDraftId(draftData._id);
+              console.log('🔍 DraftData completo:', draftData);
+              console.log('🔍 DraftData._id:', draftData._id);
+              console.log('🔍 DraftData.id:', draftData.id);
+              console.log('🔍 Claves del draftData:', Object.keys(draftData));
               
-              // Cargar datos del borrador en el formulario
-              setEventFormData({
+              console.log('📋 Datos del borrador cargados:', {
+                id: draftData._id,
+                nombre: draftData.informacionGeneral?.nombreEvento,
+                organizador: draftData.organizador,
+                configuracion: draftData.configuracion
+              });
+              
+              // Para borradores, NO estamos en modo edición, solo cargamos el borrador
+              setIsEditMode(false);
+              setEditingEventId(null);
+              
+              // Usar el ID del borrador de la URL si draftData._id no está disponible
+              const finalDraftId = draftData._id || draftData.id || editDraftId;
+              setDraftId(finalDraftId);
+              
+              console.log('✅ DraftId establecido:', finalDraftId);
+              console.log('🔍 Origen del DraftId:', {
+                'draftData._id': draftData._id,
+                'draftData.id': draftData.id,
+                'editDraftId': editDraftId,
+                'finalDraftId': finalDraftId
+              });
+              
+              // Cargar datos del borrador en el formulario (optimizado)
+              console.log('⚡ Iniciando carga optimizada del formulario...');
+              
+              const formData = {
                 nombreEvento: draftData.informacionGeneral?.nombreEvento || '',
                 descripcion: draftData.informacionGeneral?.descripcion || '',
                 fechaEvento: draftData.informacionGeneral?.fechaEvento ? 
@@ -144,46 +213,66 @@ export const useEventForm = () => {
                 lugarEvento: draftData.informacionGeneral?.lugarEvento || '',
                 bannerPromocional: null,
                 bannerUrl: draftData.informacionGeneral?.bannerPromocional || '',
-                entradas: (draftData.entradas || []).map(entrada => ({
-                  id: entrada.id,
-                  tipoEntrada: entrada.tipoEntrada || '',
-                  precio: entrada.precio || '',
-                  cuposDisponibles: entrada.cuposDisponibles || '',
-                  limitePorPersona: entrada.limitePorPersona || '',
-                  fechasVenta: {
-                    inicio: entrada.fechasVenta?.inicio || '',
-                    fin: entrada.fechasVenta?.fin || ''
-                  },
-                  entradasVendidas: entrada.entradasVendidas || 0,
-                  activa: entrada.activa !== undefined ? entrada.activa : true
-                })),
-                alimentosBebestibles: (draftData.alimentosBebestibles || []).map(alimento => ({
-                  id: alimento.id,
-                  nombre: alimento.nombre || '',
-                  precioUnitario: alimento.precioUnitario || '',
-                  stockAsignado: alimento.stockAsignado || '',
-                  descripcion: alimento.descripcion || '',
-                  imagen: null,
-                  imagenUrl: alimento.imagen || ''
-                })),
-                actividades: (draftData.actividades || []).map(actividad => ({
-                  id: actividad.id,
-                  nombreActividad: actividad.nombreActividad || '',
-                  precioUnitario: actividad.precioUnitario || '',
-                  cuposDisponibles: actividad.cuposDisponibles || '',
-                  horaInicio: actividad.horaInicio || '',
-                  horaTermino: actividad.horaTermino || '',
-                  descripcion: actividad.descripcion || '',
-                  imagenPromocional: null,
-                  imagenPromocionalUrl: actividad.imagenPromocional || ''
-                })),
+                entradas: mapEntradas(draftData.entradas),
+                alimentosBebestibles: mapAlimentosBebestibles(draftData.alimentosBebestibles),
+                actividades: mapActividades(draftData.actividades),
                 nombreOrganizador: draftData.organizador?.nombreOrganizador || '',
                 correoElectronico: draftData.organizador?.correoElectronico || '',
                 telefonoContacto: draftData.organizador?.telefonoContacto || '',
                 nombreEmpresaColegio: draftData.organizador?.nombreEmpresaColegio || '',
                 rutEmpresa: draftData.organizador?.rutEmpresa || '',
                 permiteDevolucion: draftData.configuracion?.permiteDevolucion || null
-              });
+              };
+              
+              console.log('⚡ Formulario optimizado preparado, aplicando...');
+              setEventFormData(formData);
+              console.log('✅ Formulario cargado exitosamente');
+              
+              // Cerrar estado de carga
+              setFormLoadingState({ loading: false, message: '' });
+
+              // Actualizar estados de upload para imágenes existentes
+              const newUploadStates = { ...uploadStates };
+              
+              // Actualizar estado de banner si existe
+              if (draftData.informacionGeneral?.bannerPromocional) {
+                newUploadStates.banner = {
+                  loading: false,
+                  error: null,
+                  success: true,
+                  url: draftData.informacionGeneral.bannerPromocional
+                };
+              }
+              
+              // Actualizar estados de imágenes de productos
+              if (draftData.alimentosBebestibles) {
+                draftData.alimentosBebestibles.forEach(alimento => {
+                  if (alimento.imagen) {
+                    newUploadStates.productos[alimento.id] = {
+                      loading: false,
+                      error: null,
+                      success: true,
+                      url: alimento.imagen
+                    };
+                  }
+                });
+              }
+              
+              // Actualizar estados de imágenes de actividades
+              if (draftData.actividades) {
+                draftData.actividades.forEach(actividad => {
+                  if (actividad.imagenPromocional) {
+                    newUploadStates.actividades[actividad.id] = {
+                      loading: false,
+                      error: null,
+                      success: true,
+                      url: actividad.imagenPromocional
+                    };
+                  }
+                });
+              }
+              
+              setUploadStates(newUploadStates);
             } else {
               console.error('❌ Error al cargar borrador:', result.message);
             }
@@ -198,6 +287,11 @@ export const useEventForm = () => {
 
     loadEventData();
   }, []);
+
+  // Debug: monitorear cambios en draftId
+  useEffect(() => {
+    console.log('🔄 DraftId cambió:', draftId);
+  }, [draftId]);
 
   const handleFormChange = useCallback((field, value) => {
     setEventFormData(prev => ({
@@ -663,7 +757,45 @@ export const useEventForm = () => {
     }
   }, []);
 
+  // Función para eliminar borrador
+  const deleteDraft = useCallback(async (draftId) => {
+    try {
+      const response = await fetch(`http://localhost:3001/api/drafts/${draftId}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      
+      const result = await response.json();
+      
+      if (result.status === 'success') {
+        return { success: true, message: result.message };
+      } else {
+        console.error('❌ Error al eliminar borrador:', result.message);
+        return { success: false, message: result.message || 'Error al eliminar borrador' };
+      }
+    } catch (error) {
+      console.error('❌ Error al eliminar borrador:', error);
+      return { success: false, message: error.message || 'Error al eliminar borrador' };
+    }
+  }, []);
+
   const createEvent = useCallback(async () => {
+    console.log('🚀 Iniciando creación de evento:', {
+      isEditMode,
+      editingEventId,
+      draftId,
+      fromDraft: !!draftId,
+      currentStep: createEventStep
+    });
+    
+    // Debug adicional: verificar el estado actual
+    console.log('🔍 Estado actual del hook:', {
+      draftId,
+      isEditMode,
+      editingEventId,
+      createEventStep
+    });
+    
     setCreateEventState(prev => ({
       ...prev,
       loading: true,
@@ -674,12 +806,20 @@ export const useEventForm = () => {
     try {
       const eventData = generateEventJSON();
       
+      console.log('📦 Datos del evento a crear:', {
+        nombre: eventData.informacionGeneral?.nombreEvento,
+        organizador: eventData.organizador,
+        configuracion: eventData.configuracion
+      });
+      
       // Determinar la URL y método según el modo
       const url = isEditMode 
         ? API_CONFIG.ENDPOINTS.EVENT_BY_ID(editingEventId)
         : API_CONFIG.ENDPOINTS.EVENTS;
       
       const method = isEditMode ? 'PUT' : 'POST';
+      
+      console.log('🌐 Enviando a:', { url, method, isEditMode, draftId });
 
       const response = await fetch(url, {
         method: method,
@@ -705,6 +845,36 @@ export const useEventForm = () => {
           localStorage.removeItem('editingEvent');
         }
 
+        // Si hay un borrador asociado, eliminarlo después de publicar
+        if (draftId && !isEditMode) {
+          console.log('🗑️ Intentando eliminar borrador después de crear evento:', {
+            draftId,
+            isEditMode,
+            eventCreated: true
+          });
+          try {
+            const deleteResult = await deleteDraft(draftId);
+            console.log('📥 Resultado de eliminación del borrador:', deleteResult);
+            
+            if (deleteResult.success) {
+              console.log('✅ Borrador eliminado exitosamente después de publicar evento');
+              // Limpiar el draftId local después de eliminar exitosamente
+              setDraftId(null);
+            } else {
+              console.error('❌ Error al eliminar borrador:', deleteResult.message);
+            }
+          } catch (error) {
+            console.error('❌ Error al eliminar borrador después de publicar:', error);
+            // No mostramos error al usuario ya que el evento se creó exitosamente
+          }
+        } else {
+          console.log('ℹ️ No hay borrador para eliminar:', { 
+            draftId, 
+            isEditMode, 
+            reason: !draftId ? 'No hay draftId' : 'Es modo edición'
+          });
+        }
+
       } else {
         throw new Error(result.message || `Error al ${isEditMode ? 'actualizar' : 'crear'} el evento`);
       }
@@ -719,7 +889,7 @@ export const useEventForm = () => {
         showSuccessModal: false
       }));
     }
-  }, [generateEventJSON, isEditMode, editingEventId]);
+  }, [generateEventJSON, isEditMode, editingEventId, draftId, deleteDraft, createEventStep]);
 
   // Función para guardar borrador
   const saveAsDraft = useCallback(async () => {
@@ -813,6 +983,24 @@ export const useEventForm = () => {
       
       const payload = draftId ? { draftId, ...basePayload } : basePayload;
       
+      // Debug: mostrar información del payload
+      console.log('🔍 Guardando borrador:', {
+        draftId: draftId,
+        isUpdate: !!draftId,
+        payload: {
+          ...payload,
+          // Mostrar solo los primeros caracteres de arrays largos para debug
+          entradas: payload.entradas?.length || 0,
+          alimentosBebestibles: payload.alimentosBebestibles?.length || 0,
+          actividades: payload.actividades?.length || 0
+        }
+      });
+
+      // Verificación adicional: si no hay draftId pero debería haberlo, mostrar warning
+      if (!draftId && eventFormData.nombreEvento) {
+        console.warn('⚠️ Guardando borrador sin draftId - esto puede crear duplicados');
+      }
+      
       const response = await fetch('http://localhost:3001/api/drafts/save', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -821,10 +1009,21 @@ export const useEventForm = () => {
       
       const result = await response.json();
       
+      // Debug: mostrar respuesta del backend
+      console.log('📥 Respuesta del backend:', {
+        status: result.status,
+        isNew: result.data?.draftInfo?.isNew,
+        draftId: result.data?.draftInfo?.id,
+        message: result.message
+      });
+      
       if (result.status === 'success') {
         // Si es nuevo, guardar el ID para próximas actualizaciones
         if (result.data.draftInfo.isNew) {
+          console.log('✅ Nuevo borrador creado con ID:', result.data.draftInfo.id);
           setDraftId(result.data.draftInfo.id);
+        } else {
+          console.log('🔄 Borrador actualizado con ID:', result.data.draftInfo.id);
         }
         
         // Mostrar tooltip de éxito
@@ -877,28 +1076,6 @@ export const useEventForm = () => {
     }
   }, [draftId, eventFormData, isStep1Valid, draftSaveState.loading]);
 
-  // Función para eliminar borrador
-  const deleteDraft = useCallback(async (draftId) => {
-    try {
-      const response = await fetch(`http://localhost:3001/api/drafts/${draftId}`, {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' }
-      });
-      
-      const result = await response.json();
-      
-      if (result.status === 'success') {
-        return { success: true, message: result.message };
-      } else {
-        console.error('❌ Error al eliminar borrador:', result.message);
-        return { success: false, message: result.message || 'Error al eliminar borrador' };
-      }
-    } catch (error) {
-      console.error('❌ Error al eliminar borrador:', error);
-      return { success: false, message: error.message || 'Error al eliminar borrador' };
-    }
-  }, []);
-
   const closeSuccessModal = useCallback(() => {
     setCreateEventState(prev => ({
       ...prev,
@@ -949,5 +1126,6 @@ export const useEventForm = () => {
     deleteDraft,
     closeSuccessModal,
     resetCreateEventError,
+    formLoadingState
   };
 };

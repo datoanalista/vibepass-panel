@@ -65,11 +65,20 @@ const getEventStatus = (event, currentTime) => {
     const timeDiff = startTime - now;
     const hours = Math.floor(timeDiff / (1000 * 60 * 60));
     const minutes = Math.floor((timeDiff % (1000 * 60 * 60)) / (1000 * 60));
-    const seconds = Math.floor((timeDiff % (1000 * 60)) / 1000);
+    
+    let message, timeText;
+    if (minutes < 1 && hours === 0) {
+      message = 'Evento comenzará en menos de 1 min.';
+      timeText = 'menos de 1 min.';
+    } else {
+      timeText = `${hours}h ${minutes}m`;
+      message = `Evento comenzará en ${timeText}`;
+    }
     
     return {
       status: 'por_comenzar',
-      message: `Evento comenzará en ${hours}h ${minutes}m ${seconds}s`,
+      message,
+      timeText,
       color: '#EF4444',
       timeDiff
     };
@@ -170,6 +179,7 @@ import {
 import {
   Search as SearchIcon,
   Add as AddIcon,
+  Refresh as RefreshIcon,
   Cancel as CancelIcon,
   ExpandMore as ExpandMoreIcon,
   Groups as GroupsIcon,
@@ -201,6 +211,9 @@ const EventsOverview = () => {
     cancelados: false
   });
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [lastUpdate, setLastUpdate] = useState(0);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [weekFilterActive, setWeekFilterActive] = useState(false);
   const [selectedEventForDetails, setSelectedEventForDetails] = useState(null);
   const [detailsModalOpen, setDetailsModalOpen] = useState(false);
   const [deleteConfirmModal, setDeleteConfirmModal] = useState({
@@ -243,6 +256,57 @@ const EventsOverview = () => {
     }
   };
 
+  // Función para obtener el rango de la semana actual (lunes a domingo)
+  const getCurrentWeekRange = () => {
+    const today = new Date();
+    const dayOfWeek = today.getDay(); // 0 = domingo, 1 = lunes, ..., 6 = sábado
+    
+    // Calcular el lunes de esta semana
+    const monday = new Date(today);
+    monday.setDate(today.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1)); // Si es domingo, restar 6 días
+    monday.setHours(0, 0, 0, 0);
+    
+    // Calcular el domingo de esta semana
+    const sunday = new Date(monday);
+    sunday.setDate(monday.getDate() + 6);
+    sunday.setHours(23, 59, 59, 999);
+    
+    return { monday, sunday };
+  };
+
+  // Función para verificar si un evento está en la semana actual
+  const isEventInCurrentWeek = (event) => {
+    if (!event.informacionGeneral?.fechaEvento) return false;
+    
+    const { monday, sunday } = getCurrentWeekRange();
+    const eventDate = new Date(event.informacionGeneral.fechaEvento);
+    
+    return eventDate >= monday && eventDate <= sunday;
+  };
+
+  // Función para alternar el filtro de semana
+  const toggleWeekFilter = () => {
+    setWeekFilterActive(prev => !prev);
+    console.log('📅 Filtro de semana:', weekFilterActive ? 'desactivado' : 'activado');
+  };
+
+  // Función de refresh manual
+  const handleManualRefresh = async () => {
+    if (isRefreshing) return; // Evitar múltiples refreshes simultáneos
+    
+    setIsRefreshing(true);
+    console.log('🔄 Refresh manual iniciado...');
+    
+    try {
+      await Promise.all([fetchEvents(), fetchDrafts()]);
+      console.log('✅ Refresh manual completado');
+    } catch (error) {
+      console.error('❌ Error en refresh manual:', error);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
   // Función para obtener borradores de la API
   const fetchDrafts = async () => {
     try {
@@ -251,7 +315,34 @@ const EventsOverview = () => {
       const result = await response.json();
       
       if (result.status === 'success') {
-        setDrafts(result.data.drafts || []);
+        const rawDrafts = result.data.drafts || [];
+        
+        // Limpiar duplicados por nombre de evento
+        const uniqueDrafts = rawDrafts.reduce((acc, draft) => {
+          const existingDraft = acc.find(d => 
+            d.informacionGeneral?.nombreEvento === draft.informacionGeneral?.nombreEvento
+          );
+          
+          if (!existingDraft) {
+            acc.push(draft);
+          } else {
+            console.warn('🚨 Duplicado detectado y eliminado:', {
+              nombre: draft.informacionGeneral?.nombreEvento,
+              idOriginal: existingDraft._id,
+              idDuplicado: draft._id
+            });
+          }
+          
+          return acc;
+        }, []);
+        
+        console.log('📋 Borradores cargados:', {
+          total: rawDrafts.length,
+          unicos: uniqueDrafts.length,
+          duplicadosEliminados: rawDrafts.length - uniqueDrafts.length
+        });
+        
+        setDrafts(uniqueDrafts);
       } else {
         console.error('❌ fetchDrafts - Error en response:', result.message);
       }
@@ -262,11 +353,50 @@ const EventsOverview = () => {
     }
   };
 
+  // Función helper para detectar si un evento es un borrador
+  const esBorrador = (event) => {
+    return event._id && event._id.startsWith('draft_') || 
+           event.isDraft === true || 
+           event.tipo === 'borrador' ||
+           event.estado === 'borrador' ||
+           event.draftId || // Si tiene draftId, es un borrador
+           event.source === 'draft'; // Si viene del endpoint de borradores
+  };
+
+  // Función helper para verificar si un evento ya existe como borrador
+  const existeComoBorrador = (event) => {
+    const existe = drafts.some(draft => 
+      draft._id === event._id || 
+      draft.informacionGeneral?.nombreEvento === event.informacionGeneral?.nombreEvento
+    );
+    
+    // Debug: mostrar cuando se detecta un duplicado
+    if (existe) {
+      console.log('🚨 Evento duplicado detectado:', {
+        evento: event.informacionGeneral?.nombreEvento,
+        eventId: event._id,
+        drafts: drafts.map(d => ({ id: d._id, nombre: d.informacionGeneral?.nombreEvento }))
+      });
+    }
+    
+    return existe;
+  };
+
   // Filtrar eventos activos (solo eventos de hoy) - Memoizado para performance
   const eventosActivos = useMemo(() => {
     return events.filter(event => {
       // Verificar que la fecha existe antes de procesarla
       if (!event.informacionGeneral?.fechaEvento) {
+        return false;
+      }
+      
+      // Excluir borradores y eventos que existen como borradores
+      if (esBorrador(event) || existeComoBorrador(event)) {
+        return false;
+      }
+      
+      // Aplicar filtro de semana si está activo
+      if (weekFilterActive && !isEventInCurrentWeek(event)) {
         return false;
       }
       
@@ -287,13 +417,23 @@ const EventsOverview = () => {
       
       return esHoy && noCancelado;
     });
-  }, [events]);
+  }, [events, drafts.length, weekFilterActive]); // Incluir weekFilterActive en las dependencias
 
   // Filtrar eventos programados (fechaEvento > hoy) - Memoizado para performance
   const eventosProgramados = useMemo(() => {
     return events.filter(event => {
       // Verificar que la fecha existe antes de procesarla
       if (!event.informacionGeneral?.fechaEvento) {
+        return false;
+      }
+      
+      // Excluir borradores y eventos que existen como borradores
+      if (esBorrador(event) || existeComoBorrador(event)) {
+        return false;
+      }
+      
+      // Aplicar filtro de semana si está activo
+      if (weekFilterActive && !isEventInCurrentWeek(event)) {
         return false;
       }
       
@@ -314,13 +454,23 @@ const EventsOverview = () => {
       
       return esFuturo && noCancelado;
     });
-  }, [events]);
+  }, [events, drafts.length, weekFilterActive]); // Incluir weekFilterActive en las dependencias
 
   // Filtrar eventos finalizados (fechaEvento < hoy O eventos del día actual que ya terminaron) - Memoizado
   const eventosPasados = useMemo(() => {
     return events.filter(event => {
       // Verificar que la fecha existe antes de procesarla
       if (!event.informacionGeneral?.fechaEvento) {
+        return false;
+      }
+      
+      // Excluir borradores y eventos que existen como borradores
+      if (esBorrador(event) || existeComoBorrador(event)) {
+        return false;
+      }
+      
+      // Aplicar filtro de semana si está activo
+      if (weekFilterActive && !isEventInCurrentWeek(event)) {
         return false;
       }
       
@@ -342,14 +492,19 @@ const EventsOverview = () => {
       
       return esDiaPasado || esFinalizado;
     });
-  }, [events, currentTime]);
+  }, [events, currentTime, weekFilterActive]); // Incluir weekFilterActive en las dependencias
 
   // Filtrar eventos cancelados - Memoizado para performance
   const eventosCancelados = useMemo(() => {
     return events.filter(event => {
+      // Aplicar filtro de semana si está activo
+      if (weekFilterActive && !isEventInCurrentWeek(event)) {
+        return false;
+      }
+      
       return event.informacionGeneral.estado === 'cancelado';
     });
-  }, [events]);
+  }, [events, drafts.length, weekFilterActive]); // Incluir weekFilterActive en las dependencias
 
   useEffect(() => {
     setMounted(true);
@@ -357,32 +512,48 @@ const EventsOverview = () => {
     fetchDrafts();
   }, []);
 
-  // useEffect para actualizar el tiempo de forma inteligente
+  // Event listeners de refresh eliminados - Solo se refresca al cargar la página inicialmente
+  // Los refreshes automáticos molestos han sido removidos para mejorar la experiencia del usuario
+
+  // useEffect para actualizar el tiempo de forma inteligente - OPTIMIZADO
   useEffect(() => {
-    let interval = 60000; // Por defecto cada minuto
-    
-    // Si hay eventos activos que están por comenzar (últimos 10 minutos), actualizar cada 5 segundos
-    const hasUpcomingEvents = events.some(event => {
+    // Solo actualizar si hay eventos activos o por comenzar
+    const hasActiveEvents = events.some(event => {
       if (!event.informacionGeneral?.fechaEvento || !event.informacionGeneral?.horaInicio) return false;
       
       const eventDateTime = new Date(`${event.informacionGeneral.fechaEvento}T${event.informacionGeneral.horaInicio}`);
       const now = new Date();
       const timeDiff = eventDateTime.getTime() - now.getTime();
       
-      // Si el evento está por comenzar en los próximos 10 minutos
-      return timeDiff > 0 && timeDiff <= 10 * 60 * 1000;
+      // Evento activo: ya comenzó pero no ha terminado (dentro de las próximas 24 horas)
+      const isActive = timeDiff <= 0 && timeDiff >= -24 * 60 * 60 * 1000;
+      // Evento por comenzar: comenzará en las próximas 24 horas
+      const isUpcoming = timeDiff > 0 && timeDiff <= 24 * 60 * 60 * 1000;
+      
+      return isActive || isUpcoming;
     });
     
-    if (hasUpcomingEvents) {
-      interval = 5000; // Cada 5 segundos para eventos próximos
+    // Si no hay eventos activos, no actualizar
+    if (!hasActiveEvents) {
+      console.log('⏸️ No hay eventos activos, pausando actualizaciones automáticas');
+      return;
     }
     
+    console.log('🔄 Eventos activos detectados, iniciando actualizaciones cada 60 segundos');
+    
     const timer = setInterval(() => {
-      setCurrentTime(new Date());
-    }, interval);
+      const now = Date.now();
+      if (now - lastUpdate > 50000) { // Solo actualizar si han pasado más de 50 segundos
+        setCurrentTime(new Date());
+        setLastUpdate(now);
+      }
+    }, 60000); // Cada 60 segundos
 
-    return () => clearInterval(timer);
-  }, [events]); // Dependencia en events para recalcular el intervalo
+    return () => {
+      clearInterval(timer);
+      console.log('⏹️ Actualizaciones automáticas detenidas');
+    };
+  }, [events.length]); // Solo depende del número de eventos, no del contenido
 
   if (!mounted) {
     return null;
@@ -670,7 +841,13 @@ const EventsOverview = () => {
                 fontWeight: 500,
                 wordBreak: 'break-word'
               }}>
-                {eventStatus.message}
+                {eventStatus.status === 'por_comenzar' && eventStatus.timeText ? (
+                  <>
+                    Evento comenzará en <span style={{ fontWeight: 'bold', fontSize: '16px' }}>{eventStatus.timeText}</span>
+                  </>
+                ) : (
+                  eventStatus.message
+                )}
               </Typography>
             </Box>
             
@@ -1343,7 +1520,8 @@ const EventsOverview = () => {
 
             {/* Esta semana */}
             <Button
-              variant="outlined"
+              variant={weekFilterActive ? "contained" : "outlined"}
+              onClick={toggleWeekFilter}
               sx={{
                 borderRadius: '8px',
                 textTransform: 'none',
@@ -1351,15 +1529,16 @@ const EventsOverview = () => {
                 fontSize: '14px',
                 px: 2,
                 height: '32px',
-                borderColor: '#D1D5DB',
-                color: '#374151',
+                borderColor: weekFilterActive ? '#1F2937' : '#D1D5DB',
+                color: weekFilterActive ? 'white' : '#374151',
+                backgroundColor: weekFilterActive ? '#1F2937' : 'transparent',
                 '&:hover': {
-                  borderColor: '#9CA3AF',
-                  bgcolor: '#F9FAFB'
+                  borderColor: weekFilterActive ? '#111827' : '#9CA3AF',
+                  bgcolor: weekFilterActive ? '#111827' : '#F9FAFB'
                 }
               }}
             >
-              Esta semana
+              {weekFilterActive ? 'Ver todos' : 'Esta semana'}
             </Button>
 
             {/* Selector de rango de fechas */}
@@ -1399,8 +1578,30 @@ const EventsOverview = () => {
             </Box>
           </Stack>
 
-          {/* Segunda fila: Solo Crear nuevo evento */}
-          <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+          {/* Segunda fila: Botones de acción */}
+          <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
+            <Button
+              variant="outlined"
+              onClick={handleManualRefresh}
+              disabled={isRefreshing}
+              startIcon={isRefreshing ? <CircularProgress size={16} /> : <RefreshIcon />}
+              sx={{
+                borderRadius: '10px',
+                textTransform: 'none',
+                fontWeight: 600,
+                fontSize: '14px',
+                px: 3,
+                py: 1.5,
+                borderColor: '#6b7280',
+                color: '#6b7280',
+                '&:hover': {
+                  borderColor: '#374151',
+                  color: '#374151',
+                }
+              }}
+            >
+              {isRefreshing ? 'Actualizando...' : 'Actualizar estados'}
+            </Button>
             <Button
               variant="contained"
               startIcon={<AddIcon />}
@@ -1430,6 +1631,24 @@ const EventsOverview = () => {
             </Button>
           </Box>
         </Stack>
+
+        {/* Indicador de filtro de semana */}
+        {weekFilterActive && (
+          <Box sx={{ 
+            mb: 2, 
+            p: 2, 
+            bgcolor: '#EFF6FF', 
+            border: '1px solid #BFDBFE', 
+            borderRadius: '8px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1
+          }}>
+            <Typography variant="body2" sx={{ color: '#1E40AF', fontWeight: 500 }}>
+              📅 Mostrando solo eventos de esta semana (lunes a domingo)
+            </Typography>
+          </Box>
+        )}
 
         {/* Eventos Activos */}
         <Box sx={{ mb: 4 }}>
@@ -1958,10 +2177,10 @@ const EventsOverview = () => {
                   sx={{ width: 48, height: 48 }}
                 />
                 <Box>
-                  <Typography variant="h6" sx={{ fontWeight: 700, mb: 0.5 }}>
+                  <Typography variant="h6" sx={{ fontWeight: 700, mb: 0.5, color: 'white' }}>
                     {selectedEventForDetails.informacionGeneral?.nombreEvento}
                   </Typography>
-                  <Typography variant="body2" sx={{ opacity: 0.9 }}>
+                  <Typography variant="body2" sx={{ opacity: 0.9, color: 'white' }}>
                     {selectedEventForDetails.organizador?.nombreOrganizador}
                   </Typography>
                 </Box>

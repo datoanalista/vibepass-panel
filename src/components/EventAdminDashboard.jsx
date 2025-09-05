@@ -46,11 +46,20 @@ const getEventStatus = (event) => {
     const timeDiff = startTime - now;
     const hours = Math.floor(timeDiff / (1000 * 60 * 60));
     const minutes = Math.floor((timeDiff % (1000 * 60 * 60)) / (1000 * 60));
-    const seconds = Math.floor((timeDiff % (1000 * 60)) / 1000);
+    
+    let message, timeText;
+    if (minutes < 1 && hours === 0) {
+      message = 'Evento comenzará en menos de 1 min.';
+      timeText = 'menos de 1 min.';
+    } else {
+      timeText = `${hours}h ${minutes}m`;
+      message = `Evento comenzará en ${timeText}`;
+    }
     
     return {
       status: 'por_comenzar',
-      message: `Evento comenzará en ${hours}h ${minutes}m ${seconds}s`,
+      message,
+      timeText,
       color: '#EF4444',
       timeDiff
     };
@@ -834,14 +843,38 @@ const EventAdminDashboard = () => {
     const [inventory, setInventory] = useState([]);
     const [showAllAgendables, setShowAllAgendables] = useState(false);
 
-    // useEffect para actualizar el tiempo cada segundo (para el contador)
+    // useEffect para actualizar el tiempo cada 60 segundos si hay eventos activos
     useEffect(() => {
+      // Solo actualizar si hay un evento seleccionado y está activo o por comenzar
+      if (!selectedEvent || !selectedEvent.informacionGeneral?.fechaEvento || !selectedEvent.informacionGeneral?.horaInicio) {
+        return;
+      }
+      
+      const eventDateTime = new Date(`${selectedEvent.informacionGeneral.fechaEvento}T${selectedEvent.informacionGeneral.horaInicio}`);
+      const now = new Date();
+      const timeDiff = eventDateTime.getTime() - now.getTime();
+      
+      // Evento activo: ya comenzó pero no ha terminado (dentro de las próximas 24 horas)
+      const isActive = timeDiff <= 0 && timeDiff >= -24 * 60 * 60 * 1000;
+      // Evento por comenzar: comenzará en las próximas 24 horas
+      const isUpcoming = timeDiff > 0 && timeDiff <= 24 * 60 * 60 * 1000;
+      
+      if (!isActive && !isUpcoming) {
+        console.log('⏸️ Evento no activo, pausando actualizaciones automáticas');
+        return;
+      }
+      
+      console.log('🔄 Evento activo detectado, iniciando actualizaciones cada 60 segundos');
+      
       const timer = setInterval(() => {
         setCurrentTime(new Date());
-      }, 1000);
+      }, 60000); // Cada 60 segundos
 
-      return () => clearInterval(timer);
-    }, []);
+      return () => {
+        clearInterval(timer);
+        console.log('⏹️ Actualizaciones automáticas detenidas');
+      };
+    }, [selectedEvent]);
 
     useEffect(() => {
       if (selectedEventId) {
@@ -956,7 +989,13 @@ const EventAdminDashboard = () => {
               bgcolor: dashboardData.eventStatus?.color || '#3B82F6'
             }} />
             <Typography variant="h6" sx={{ color: '#374151', fontWeight: 600 }}>
-              {dashboardData.eventStatus?.message || 'Evento programado'}
+              {dashboardData.eventStatus?.status === 'por_comenzar' && dashboardData.eventStatus?.timeText ? (
+                <>
+                  Evento comenzará en <span style={{ fontWeight: 'bold', fontSize: '20px' }}>{dashboardData.eventStatus.timeText}</span>
+                </>
+              ) : (
+                dashboardData.eventStatus?.message || 'Evento programado'
+              )}
             </Typography>
             <Box sx={{ flexGrow: 1 }} />
             <Button 
