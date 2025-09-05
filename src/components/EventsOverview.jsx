@@ -311,7 +311,7 @@ const EventsOverview = () => {
   const fetchDrafts = async () => {
     try {
       setDraftsLoading(true);
-      const response = await fetch('http://localhost:3001/api/drafts');
+      const response = await fetch(API_CONFIG.ENDPOINTS.DRAFTS);
       const result = await response.json();
       
       if (result.status === 'success') {
@@ -583,7 +583,7 @@ const EventsOverview = () => {
     const { draftId } = deleteConfirmModal;
     
     try {
-      const response = await fetch(`http://localhost:3001/api/drafts/${draftId}`, {
+      const response = await fetch(API_CONFIG.ENDPOINTS.DRAFT_BY_ID(draftId), {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' }
       });
@@ -638,7 +638,7 @@ const EventsOverview = () => {
     const { eventId, eventName } = cancelConfirmModal;
     
     try {
-      const response = await fetch(`http://localhost:3001/api/events/${eventId}`, {
+      const response = await fetch(API_CONFIG.ENDPOINTS.EVENT_BY_ID(eventId), {
         method: 'DELETE'
       });
       
@@ -781,11 +781,11 @@ const EventsOverview = () => {
           boxShadow: '0px 6px 12px rgba(0, 0, 0, 0.15)'
         }
       }}>
-        <CardContent sx={{ p: 3 }}>
+        <CardContent sx={{ p: 4 }}>
           {/* Fila principal */}
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 4 }}>
             {/* Puntito verde + Banner */}
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, minWidth: '80px' }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, minWidth: '80px' }}>
               <Box sx={{
                 width: 12,
                 height: 12,
@@ -837,8 +837,8 @@ const EventsOverview = () => {
             <Box sx={{ flex: '1 1 auto', minWidth: '200px', textAlign: 'center' }}>
               <Typography variant="body2" sx={{ 
                 color: eventStatus.color,
-                fontSize: '14px',
-                fontWeight: 500,
+                fontSize: eventStatus.status === 'en_curso' ? '18px' : '14px',
+                fontWeight: eventStatus.status === 'en_curso' ? 700 : 500,
                 wordBreak: 'break-word'
               }}>
                 {eventStatus.status === 'por_comenzar' && eventStatus.timeText ? (
@@ -855,7 +855,7 @@ const EventsOverview = () => {
             <Box sx={{ flex: '0 0 140px', minWidth: '140px' }}>
               <Chip
                 icon={<GroupsIcon />}
-                label={`Asistentes ${totalAsistentes}`}
+                label={`Asistentes ${totalAsistentes.toLocaleString()}`}
                 sx={{
                   bgcolor: '#3B82F6',
                   color: 'white',
@@ -1667,13 +1667,13 @@ const EventsOverview = () => {
               variant="h6" 
               sx={{ 
                 color: 'white !important',
-                fontSize: '1rem',
+                fontSize: '0.8rem',
                 fontWeight: '700 !important',
                 fontFamily: 'inherit',
                 m: 0
               }}
             >
-              Eventos activos
+              Eventos Activos
             </Typography>
           </Box>
           
@@ -1770,7 +1770,7 @@ const EventsOverview = () => {
               variant="h6" 
               sx={{ 
                 color: 'white !important',
-                fontSize: '1rem',
+                fontSize: '0.8rem',
                 fontWeight: '700 !important',
                 fontFamily: 'inherit',
                 m: 0
@@ -1871,7 +1871,7 @@ const EventsOverview = () => {
               variant="h6" 
               sx={{ 
                 color: 'white !important',
-                fontSize: '1rem',
+                fontSize: '0.8rem',
                 fontWeight: '700 !important',
                 fontFamily: 'inherit',
                 m: 0
@@ -1972,13 +1972,13 @@ const EventsOverview = () => {
               variant="h6" 
               sx={{ 
                 color: 'white !important',
-                fontSize: '1rem',
+                fontSize: '0.8rem',
                 fontWeight: '700 !important',
                 fontFamily: 'inherit',
                 m: 0
               }}
             >
-              Eventos finalizados
+              Eventos Finalizados
             </Typography>
           </Box>
           
@@ -2073,13 +2073,13 @@ const EventsOverview = () => {
               variant="h6" 
               sx={{ 
                 color: 'white !important',
-                fontSize: '1rem',
+                fontSize: '0.8rem',
                 fontWeight: '700 !important',
                 fontFamily: 'inherit',
                 m: 0
               }}
             >
-              Eventos cancelados
+              Eventos Cancelados
             </Typography>
           </Box>
           

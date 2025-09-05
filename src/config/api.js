@@ -18,6 +18,11 @@ const API_CONFIG = {
     EVENTS: process.env.NEXT_PUBLIC_API_EVENTS_URL || 'http://localhost:3001/api/events',
     EVENT_BY_ID: (id) => `${API_CONFIG.BASE_URL}/api/events/${id}`,
     
+    // Borradores
+    DRAFTS: process.env.NEXT_PUBLIC_API_DRAFTS_URL || 'http://localhost:3001/api/drafts',
+    DRAFT_BY_ID: (id) => `${API_CONFIG.BASE_URL}/api/drafts/${id}`,
+    DRAFT_SAVE: process.env.NEXT_PUBLIC_API_DRAFT_SAVE_URL || 'http://localhost:3001/api/drafts/save',
+    
     // Usuarios
     USERS: process.env.NEXT_PUBLIC_API_USERS_URL || 'http://localhost:3001/api/users',
     USER_BY_ID: (id) => `${API_CONFIG.BASE_URL}/api/users/${id}`,

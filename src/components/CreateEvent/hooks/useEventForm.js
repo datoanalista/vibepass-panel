@@ -162,7 +162,7 @@ export const useEventForm = () => {
           console.log('📝 Cargando borrador para editar:', editDraftId);
           
           try {
-            const response = await fetch(`http://localhost:3001/api/drafts/${editDraftId}`);
+            const response = await fetch(API_CONFIG.ENDPOINTS.DRAFT_BY_ID(editDraftId));
             const result = await response.json();
             
             console.log('📥 Respuesta del borrador:', result);
@@ -760,7 +760,7 @@ export const useEventForm = () => {
   // Función para eliminar borrador
   const deleteDraft = useCallback(async (draftId) => {
     try {
-      const response = await fetch(`http://localhost:3001/api/drafts/${draftId}`, {
+      const response = await fetch(API_CONFIG.ENDPOINTS.DRAFT_BY_ID(draftId), {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' }
       });
@@ -1001,7 +1001,7 @@ export const useEventForm = () => {
         console.warn('⚠️ Guardando borrador sin draftId - esto puede crear duplicados');
       }
       
-      const response = await fetch('http://localhost:3001/api/drafts/save', {
+      const response = await fetch(API_CONFIG.ENDPOINTS.DRAFT_SAVE, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
