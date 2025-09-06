@@ -2,8 +2,8 @@
 // Este archivo centraliza todas las URLs y configuraciones de la API
 
 const API_CONFIG = {
-  // URL base del API
-  BASE_URL: process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3001',
+  // URL base del API - Forzar ngrok para GitHub Pages
+  BASE_URL: process.env.NEXT_PUBLIC_API_BASE_URL || 'https://288416b658a3.ngrok-free.app',
   
   // Entorno actual
   ENVIRONMENT: process.env.NEXT_PUBLIC_ENVIRONMENT || 'development',
@@ -12,29 +12,29 @@ const API_CONFIG = {
   APP_NAME: process.env.NEXT_PUBLIC_APP_NAME || 'VibePass Panel',
   APP_VERSION: process.env.NEXT_PUBLIC_APP_VERSION || '1.0.0',
   
-  // Endpoints específicos
+  // Endpoints específicos - Forzar ngrok para GitHub Pages
   ENDPOINTS: {
     // Eventos
-    EVENTS: process.env.NEXT_PUBLIC_API_EVENTS_URL || 'http://localhost:3001/api/events',
+    EVENTS: process.env.NEXT_PUBLIC_API_EVENTS_URL || 'https://288416b658a3.ngrok-free.app/api/events',
     EVENT_BY_ID: (id) => `${API_CONFIG.BASE_URL}/api/events/${id}`,
     
     // Borradores
-    DRAFTS: process.env.NEXT_PUBLIC_API_DRAFTS_URL || 'http://localhost:3001/api/drafts',
+    DRAFTS: process.env.NEXT_PUBLIC_API_DRAFTS_URL || 'https://288416b658a3.ngrok-free.app/api/drafts',
     DRAFT_BY_ID: (id) => `${API_CONFIG.BASE_URL}/api/drafts/${id}`,
-    DRAFT_SAVE: process.env.NEXT_PUBLIC_API_DRAFT_SAVE_URL || 'http://localhost:3001/api/drafts/save',
+    DRAFT_SAVE: process.env.NEXT_PUBLIC_API_DRAFT_SAVE_URL || 'https://288416b658a3.ngrok-free.app/api/drafts/save',
     
     // Usuarios
-    USERS: process.env.NEXT_PUBLIC_API_USERS_URL || 'http://localhost:3001/api/users',
+    USERS: process.env.NEXT_PUBLIC_API_USERS_URL || 'https://288416b658a3.ngrok-free.app/api/users',
     USER_BY_ID: (id) => `${API_CONFIG.BASE_URL}/api/users/${id}`,
     
     // Inventario
-    INVENTORY: process.env.NEXT_PUBLIC_API_INVENTORY_URL || 'http://localhost:3001/api/inventory',
+    INVENTORY: process.env.NEXT_PUBLIC_API_INVENTORY_URL || 'https://288416b658a3.ngrok-free.app/api/inventory',
     INVENTORY_BY_ID: (id) => `${API_CONFIG.BASE_URL}/api/inventory/${id}`,
     
     // Uploads
-    UPLOAD_BANNER: process.env.NEXT_PUBLIC_API_UPLOAD_BANNER_URL || 'http://localhost:3001/api/upload/banner',
-    UPLOAD_PRODUCTS: process.env.NEXT_PUBLIC_API_UPLOAD_PRODUCTS_URL || 'http://localhost:3001/api/upload/products',
-    UPLOAD_ACTIVITIES: process.env.NEXT_PUBLIC_API_UPLOAD_ACTIVITIES_URL || 'http://localhost:3001/api/upload/activities',
+    UPLOAD_BANNER: process.env.NEXT_PUBLIC_API_UPLOAD_BANNER_URL || 'https://288416b658a3.ngrok-free.app/api/upload/banner',
+    UPLOAD_PRODUCTS: process.env.NEXT_PUBLIC_API_UPLOAD_PRODUCTS_URL || 'https://288416b658a3.ngrok-free.app/api/upload/products',
+    UPLOAD_ACTIVITIES: process.env.NEXT_PUBLIC_API_UPLOAD_ACTIVITIES_URL || 'https://288416b658a3.ngrok-free.app/api/upload/activities',
   },
   
   // Configuración de requests
