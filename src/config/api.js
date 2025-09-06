@@ -37,7 +37,7 @@ const API_CONFIG = {
     UPLOAD_ACTIVITIES: process.env.NEXT_PUBLIC_API_UPLOAD_ACTIVITIES_URL || 'https://e6ef5d8c3fd3.ngrok-free.app/api/upload/activities',
   },
   
-  // Configuración de requests
+  // Configuración de request
   REQUEST_CONFIG: {
     headers: {
       'Content-Type': 'application/json',
