@@ -1,11 +1,16 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  // Configuración para GitHub Pages
+  output: 'export',
+  trailingSlash: true,
+  images: {
+    unoptimized: true,
+  },
+  // Configuración base
   experimental: {
     optimizeCss: true,
   },
-  // Optimizar preloads
   compiler: {
     removeConsole: process.env.NODE_ENV === 'production',
   },
