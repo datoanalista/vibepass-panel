@@ -121,7 +121,7 @@ const CalendarComponent = ({ selectedEventId }) => {
 
   const fetchEventDate = async () => {
     try {
-      const response = await fetch(API_CONFIG.ENDPOINTS.EVENT_BY_ID(selectedEventId));
+      const response = await fetch(API_CONFIG.ENDPOINTS.EVENT_BY_ID(selectedEventId), API_CONFIG.REQUEST_CONFIG);
       const eventData = await response.json();
       
       const actualEventData = eventData.data?.event || eventData.data || eventData;
@@ -314,7 +314,7 @@ const EventAdminDashboard = () => {
     try {
       setEventsLoading(true);
       
-      const response = await fetch(API_CONFIG.ENDPOINTS.EVENTS);
+      const response = await fetch(API_CONFIG.ENDPOINTS.EVENTS, API_CONFIG.REQUEST_CONFIG);
       const result = await response.json();
       
       if (response.ok && result.status === 'success') {
@@ -356,7 +356,7 @@ const EventAdminDashboard = () => {
       const response = await fetch(API_CONFIG.ENDPOINTS.USERS, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
+          ...API_CONFIG.REQUEST_CONFIG.headers,
         },
         body: JSON.stringify(userDataWithEvent),
       });
@@ -407,7 +407,7 @@ const EventAdminDashboard = () => {
       const response = await fetch(API_CONFIG.ENDPOINTS.USER_BY_ID(editingUser._id || editingUser.id), {
         method: 'PUT',
         headers: {
-          'Content-Type': 'application/json',
+          ...API_CONFIG.REQUEST_CONFIG.headers,
         },
         body: JSON.stringify(userFormData),
       });
@@ -467,7 +467,7 @@ const EventAdminDashboard = () => {
       const response = await fetch(API_CONFIG.ENDPOINTS.INVENTORY_BY_ID(editingInventory.id || editingInventory._id), {
         method: 'PUT',
         headers: {
-          'Content-Type': 'application/json',
+          ...API_CONFIG.REQUEST_CONFIG.headers,
         },
         body: JSON.stringify({
           nombreProducto: inventoryFormData.nombreProducto,

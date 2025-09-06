@@ -239,7 +239,7 @@ const EventsOverview = () => {
       setLoading(true);
       setError(null);
       
-      const response = await fetch(API_CONFIG.ENDPOINTS.EVENTS);
+      const response = await fetch(API_CONFIG.ENDPOINTS.EVENTS, API_CONFIG.REQUEST_CONFIG);
       const result = await response.json();
       
       if (response.ok && result.status === 'success') {
@@ -311,7 +311,7 @@ const EventsOverview = () => {
   const fetchDrafts = async () => {
     try {
       setDraftsLoading(true);
-      const response = await fetch(API_CONFIG.ENDPOINTS.DRAFTS);
+      const response = await fetch(API_CONFIG.ENDPOINTS.DRAFTS, API_CONFIG.REQUEST_CONFIG);
       const result = await response.json();
       
       if (result.status === 'success') {

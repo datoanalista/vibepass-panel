@@ -162,7 +162,7 @@ export const useEventForm = () => {
           console.log('📝 Cargando borrador para editar:', editDraftId);
           
           try {
-            const response = await fetch(API_CONFIG.ENDPOINTS.DRAFT_BY_ID(editDraftId));
+            const response = await fetch(API_CONFIG.ENDPOINTS.DRAFT_BY_ID(editDraftId), API_CONFIG.REQUEST_CONFIG);
             const result = await response.json();
             
             console.log('📥 Respuesta del borrador:', result);
