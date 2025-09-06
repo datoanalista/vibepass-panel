@@ -41,6 +41,7 @@ const API_CONFIG = {
   REQUEST_CONFIG: {
     headers: {
       'Content-Type': 'application/json',
+      'ngrok-skip-browser-warning': 'true', // Saltar advertencia de ngrok
     },
     timeout: 10000, // 10 segundos
   },

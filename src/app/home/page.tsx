@@ -53,7 +53,7 @@ const HomePage = () => {
             </Typography>
             
             <img 
-              src="/vibepass.svg" 
+              src="/vibepass-panel/vibepass.svg" 
               alt="VibePass" 
               style={{ width: 60, height: 60 }}
             />

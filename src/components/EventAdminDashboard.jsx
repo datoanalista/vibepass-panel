@@ -575,7 +575,7 @@ const EventAdminDashboard = () => {
               }
             }}>
               <img 
-                src="/vibepass.svg" 
+                src="/vibepass-panel/vibepass.svg" 
                 alt="VibePass" 
                 style={{ 
                   height: '32px', 
