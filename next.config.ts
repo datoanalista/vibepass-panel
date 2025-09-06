@@ -4,6 +4,7 @@ const nextConfig: NextConfig = {
   // Configuración para GitHub Pages
   output: 'export',
   trailingSlash: true,
+  basePath: '/vibepass-panel',
   images: {
     unoptimized: true,
   },
