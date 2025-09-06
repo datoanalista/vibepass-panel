@@ -634,7 +634,7 @@ const AddInventoryForm = ({
         </DialogActions>
       </Dialog>
 
-      {/* Modal de */}
+      {/* Modal*/}
       <Dialog 
         open={showErrorModal} 
         onClose={() => setShowErrorModal(false)}
