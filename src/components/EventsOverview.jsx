@@ -233,13 +233,103 @@ const EventsOverview = () => {
   });
 
 
+  // Función para actualizar eventos programados que ya pasaron a "finalizado"
+  const updateFinishedEvents = async () => {
+    try {
+      console.log('🔄 Verificando eventos programados que deben estar finalizados...');
+      
+      const today = new Date();
+      const todayOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+      
+      // Encontrar eventos programados que ya pasaron (fecha anterior a hoy)
+      const eventsToFinish = events.filter(event => {
+        if (event.informacionGeneral?.estado !== 'programado') return false;
+        if (!event.informacionGeneral?.fechaEvento) return false;
+        
+        // Crear fecha del evento correctamente
+        const eventDateString = event.informacionGeneral.fechaEvento; // "2025-09-06"
+        const [year, month, day] = eventDateString.split('-');
+        const eventDate = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+        const eventDateOnly = new Date(eventDate.getFullYear(), eventDate.getMonth(), eventDate.getDate());
+        
+        console.log('🔍 Comparando fechas:', {
+          evento: event.informacionGeneral?.nombreEvento,
+          fechaEvento: eventDateString,
+          eventDateOnly: eventDateOnly.toDateString(),
+          todayOnly: todayOnly.toDateString(),
+          esPasado: eventDateOnly < todayOnly
+        });
+        
+        return eventDateOnly < todayOnly; // Evento fue ayer o antes
+      });
+      
+      console.log(`📅 Eventos a finalizar: ${eventsToFinish.length}`, eventsToFinish.map(e => ({
+        nombre: e.informacionGeneral?.nombreEvento,
+        fecha: e.informacionGeneral?.fechaEvento
+      })));
+      
+      // Actualizar cada evento en el backend (igual que cancelar evento)
+      for (const event of eventsToFinish) {
+        const eventId = event._id || event.id;
+        
+        try {
+          const response = await fetch(API_CONFIG.ENDPOINTS.EVENT_BY_ID(eventId), {
+            method: 'PUT',
+            headers: API_CONFIG.REQUEST_CONFIG.headers,
+            body: JSON.stringify({
+              ...event,
+              informacionGeneral: {
+                ...event.informacionGeneral,
+                estado: 'finalizado'
+              },
+              // Desactivar todas las entradas
+              entradas: event.entradas?.map(entrada => ({
+                ...entrada,
+                activa: false
+              })) || [],
+              // Desactivar todos los alimentos y bebestibles
+              alimentosBebestibles: event.alimentosBebestibles?.map(alimento => ({
+                ...alimento,
+                activo: false
+              })) || [],
+              // Desactivar todas las actividades
+              actividades: event.actividades?.map(actividad => ({
+                ...actividad,
+                activa: false
+              })) || []
+            })
+          });
+          
+          if (response.ok) {
+            const result = await response.json();
+            console.log(`✅ Evento "${event.informacionGeneral?.nombreEvento}" finalizado automáticamente`);
+          } else {
+            console.warn(`⚠️ Error al finalizar evento "${event.informacionGeneral?.nombreEvento}"`);
+          }
+        } catch (error) {
+          console.error(`❌ Error al finalizar evento "${event.informacionGeneral?.nombreEvento}":`, error);
+        }
+      }
+      
+      return eventsToFinish.length > 0;
+    } catch (error) {
+      console.error('❌ Error al actualizar eventos finalizados:', error);
+      return false;
+    }
+  };
+
   // Función para obtener eventos de la API
-  const fetchEvents = async () => {
+  const fetchEvents = async (checkFinished = false) => {
     try {
       setLoading(true);
       setError(null);
       
-      const response = await fetch(API_CONFIG.ENDPOINTS.EVENTS, API_CONFIG.REQUEST_CONFIG);
+      // Primero verificar y actualizar eventos finalizados si se solicita
+      if (checkFinished && events.length > 0) {
+        await updateFinishedEvents();
+      }
+      
+      const response = await fetch(`${API_CONFIG.ENDPOINTS.EVENTS}?limit=900`, API_CONFIG.REQUEST_CONFIG);
       const result = await response.json();
       
       if (response.ok && result.status === 'success') {
@@ -298,7 +388,7 @@ const EventsOverview = () => {
     console.log('🔄 Refresh manual iniciado...');
     
     try {
-      await Promise.all([fetchEvents(), fetchDrafts()]);
+      await Promise.all([fetchEvents(true), fetchDrafts()]); // Verificar eventos finalizados al actualizar
       console.log('✅ Refresh manual completado');
     } catch (error) {
       console.error('❌ Error en refresh manual:', error);
@@ -311,7 +401,7 @@ const EventsOverview = () => {
   const fetchDrafts = async () => {
     try {
       setDraftsLoading(true);
-      const response = await fetch(API_CONFIG.ENDPOINTS.DRAFTS, API_CONFIG.REQUEST_CONFIG);
+      const response = await fetch(`${API_CONFIG.ENDPOINTS.DRAFTS}?limit=900`, API_CONFIG.REQUEST_CONFIG);
       const result = await response.json();
       
       if (result.status === 'success') {
@@ -508,7 +598,7 @@ const EventsOverview = () => {
 
   useEffect(() => {
     setMounted(true);
-    fetchEvents();
+    fetchEvents(true); // Verificar eventos finalizados al cargar la página
     fetchDrafts();
   }, []);
 
