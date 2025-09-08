@@ -474,7 +474,7 @@ const EventsOverview = () => {
 
   // Filtrar eventos activos (solo eventos de hoy) - Memoizado para performance
   const eventosActivos = useMemo(() => {
-    return events.filter(event => {
+    const filtered = events.filter(event => {
       // Verificar que la fecha existe antes de procesarla
       if (!event.informacionGeneral?.fechaEvento) {
         return false;
@@ -507,11 +507,18 @@ const EventsOverview = () => {
       
       return esHoy && noCancelado;
     });
+    
+    // Ordenar por hora de inicio: más temprano primero
+    return filtered.sort((a, b) => {
+      const horaA = a.informacionGeneral.horaInicio || '00:00';
+      const horaB = b.informacionGeneral.horaInicio || '00:00';
+      return horaA.localeCompare(horaB); // Orden alfabético de horas (funciona para HH:MM)
+    });
   }, [events, drafts.length, weekFilterActive]); // Incluir weekFilterActive en las dependencias
 
   // Filtrar eventos programados (fechaEvento > hoy) - Memoizado para performance
   const eventosProgramados = useMemo(() => {
-    return events.filter(event => {
+    const filtered = events.filter(event => {
       // Verificar que la fecha existe antes de procesarla
       if (!event.informacionGeneral?.fechaEvento) {
         return false;
@@ -544,11 +551,18 @@ const EventsOverview = () => {
       
       return esFuturo && noCancelado;
     });
+    
+    // Ordenar por fecha: más cercanos primero (ascendente)
+    return filtered.sort((a, b) => {
+      const fechaA = new Date(a.informacionGeneral.fechaEvento);
+      const fechaB = new Date(b.informacionGeneral.fechaEvento);
+      return fechaA - fechaB; // Orden ascendente: fechas más cercanas primero
+    });
   }, [events, drafts.length, weekFilterActive]); // Incluir weekFilterActive en las dependencias
 
   // Filtrar eventos finalizados (fechaEvento < hoy O eventos del día actual que ya terminaron) - Memoizado
   const eventosPasados = useMemo(() => {
-    return events.filter(event => {
+    const filtered = events.filter(event => {
       // Verificar que la fecha existe antes de procesarla
       if (!event.informacionGeneral?.fechaEvento) {
         return false;
@@ -581,6 +595,13 @@ const EventsOverview = () => {
       const esFinalizado = eventStatus.status === 'finalizado';
       
       return esDiaPasado || esFinalizado;
+    });
+    
+    // Ordenar por fecha: más recientes primero (descendente)
+    return filtered.sort((a, b) => {
+      const fechaA = new Date(a.informacionGeneral.fechaEvento);
+      const fechaB = new Date(b.informacionGeneral.fechaEvento);
+      return fechaB - fechaA; // Orden descendente: fechas más recientes primero
     });
   }, [events, currentTime, weekFilterActive]); // Incluir weekFilterActive en las dependencias
 
