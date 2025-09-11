@@ -839,42 +839,10 @@ const EventAdminDashboard = () => {
       eventoActivo: 'programado'
     });
     const [loading, setLoading] = useState(true);
-    const [currentTime, setCurrentTime] = useState(new Date());
     const [inventory, setInventory] = useState([]);
     const [showAllAgendables, setShowAllAgendables] = useState(false);
 
-    // useEffect para actualizar el tiempo cada 60 segundos si hay eventos activos
-    useEffect(() => {
-      // Solo actualizar si hay un evento seleccionado y está activo o por comenzar
-      if (!selectedEvent || !selectedEvent.informacionGeneral?.fechaEvento || !selectedEvent.informacionGeneral?.horaInicio) {
-        return;
-      }
-      
-      const eventDateTime = new Date(`${selectedEvent.informacionGeneral.fechaEvento}T${selectedEvent.informacionGeneral.horaInicio}`);
-      const now = new Date();
-      const timeDiff = eventDateTime.getTime() - now.getTime();
-      
-      // Evento activo: ya comenzó pero no ha terminado (dentro de las próximas 24 horas)
-      const isActive = timeDiff <= 0 && timeDiff >= -24 * 60 * 60 * 1000;
-      // Evento por comenzar: comenzará en las próximas 24 horas
-      const isUpcoming = timeDiff > 0 && timeDiff <= 24 * 60 * 60 * 1000;
-      
-      if (!isActive && !isUpcoming) {
-        console.log('⏸️ Evento no activo, pausando actualizaciones automáticas');
-        return;
-      }
-      
-      console.log('🔄 Evento activo detectado, iniciando actualizaciones cada 60 segundos');
-      
-      const timer = setInterval(() => {
-        setCurrentTime(new Date());
-      }, 60000); // Cada 60 segundos
-
-      return () => {
-        clearInterval(timer);
-        console.log('⏹️ Actualizaciones automáticas detenidas');
-      };
-    }, [selectedEvent]);
+    // Removed automatic time updates to prevent API spam
 
     useEffect(() => {
       if (selectedEventId) {
@@ -882,21 +850,7 @@ const EventAdminDashboard = () => {
       }
     }, [selectedEventId]);
 
-    // useEffect para recalcular el estado del evento cuando cambie el tiempo
-    useEffect(() => {
-      if (selectedEvent && dashboardData.eventStatus) {
-        const newEventStatus = getEventStatus(selectedEvent);
-        
-        if (newEventStatus.status !== dashboardData.eventStatus.status || 
-            newEventStatus.message !== dashboardData.eventStatus.message) {
-          setDashboardData(prev => ({
-            ...prev,
-            eventoActivo: newEventStatus.status,
-            eventStatus: newEventStatus
-          }));
-        }
-      }
-    }, [currentTime, selectedEvent]);
+    // Removed time-based status updates to prevent API spam
 
     const fetchDashboardData = async () => {
       try {
