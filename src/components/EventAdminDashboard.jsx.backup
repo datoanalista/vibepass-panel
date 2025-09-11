@@ -537,7 +537,7 @@ const EventAdminDashboard = () => {
         const monthName = date.toLocaleDateString('es-CL', { month: 'short' });
         const yearNum = date.getFullYear();
         const formattedDate = `${dayNum} de ${monthName} de ${yearNum}`;
-        return `${eventName} - ${formattedDate}`;
+        return `${eventName} / ${formattedDate}`;
       } catch (error) {
         console.error('Error formatting selected event date:', error);
         return eventName;
@@ -937,7 +937,7 @@ const EventAdminDashboard = () => {
                     }
                   }
                   
-                  const displayText = formattedDate ? `${eventName} - ${formattedDate}` : eventName;
+                  const displayText = formattedDate ? `${eventName} / ${formattedDate}` : eventName;
                   const statusInfo = event.statusInfo || getEventStatusForDropdown(event);
                   
                   return (
@@ -1006,10 +1006,42 @@ const EventAdminDashboard = () => {
       eventoActivo: 'programado'
     });
     const [loading, setLoading] = useState(true);
+    const [currentTime, setCurrentTime] = useState(new Date());
     const [inventory, setInventory] = useState([]);
     const [showAllAgendables, setShowAllAgendables] = useState(false);
 
-    // Removed automatic time updates to prevent API spam
+    // useEffect para actualizar el tiempo cada 60 segundos si hay eventos activos
+    useEffect(() => {
+      // Solo actualizar si hay un evento seleccionado y está activo o por comenzar
+      if (!selectedEvent || !selectedEvent.informacionGeneral?.fechaEvento || !selectedEvent.informacionGeneral?.horaInicio) {
+        return;
+      }
+      
+      const eventDateTime = new Date(`${selectedEvent.informacionGeneral.fechaEvento}T${selectedEvent.informacionGeneral.horaInicio}`);
+      const now = new Date();
+      const timeDiff = eventDateTime.getTime() - now.getTime();
+      
+      // Evento activo: ya comenzó pero no ha terminado (dentro de las próximas 24 horas)
+      const isActive = timeDiff <= 0 && timeDiff >= -24 * 60 * 60 * 1000;
+      // Evento por comenzar: comenzará en las próximas 24 horas
+      const isUpcoming = timeDiff > 0 && timeDiff <= 24 * 60 * 60 * 1000;
+      
+      if (!isActive && !isUpcoming) {
+        console.log('⏸️ Evento no activo, pausando actualizaciones automáticas');
+        return;
+      }
+      
+      console.log('🔄 Evento activo detectado, iniciando actualizaciones cada 60 segundos');
+      
+      const timer = setInterval(() => {
+        setCurrentTime(new Date());
+      }, 60000); // Cada 60 segundos
+
+      return () => {
+        clearInterval(timer);
+        console.log('⏹️ Actualizaciones automáticas detenidas');
+      };
+    }, [selectedEvent]);
 
     useEffect(() => {
       if (selectedEventId) {
@@ -1017,7 +1049,21 @@ const EventAdminDashboard = () => {
       }
     }, [selectedEventId]);
 
-    // Removed time-based status updates to prevent API spam
+    // useEffect para recalcular el estado del evento cuando cambie el tiempo
+    useEffect(() => {
+      if (selectedEvent && dashboardData.eventStatus) {
+        const newEventStatus = getEventStatus(selectedEvent);
+        
+        if (newEventStatus.status !== dashboardData.eventStatus.status || 
+            newEventStatus.message !== dashboardData.eventStatus.message) {
+          setDashboardData(prev => ({
+            ...prev,
+            eventoActivo: newEventStatus.status,
+            eventStatus: newEventStatus
+          }));
+        }
+      }
+    }, [currentTime, selectedEvent]);
 
     const fetchDashboardData = async () => {
       try {
@@ -1055,10 +1101,10 @@ const EventAdminDashboard = () => {
         }, 0);
         
         // 2. Calculate sales from food and beverages (alimentos y bebidas)
-        const ventasAlimentosBebestibles = (eventDetails.alimentosBebestibles || []).reduce((total, item) => {
-          const stockAsignado = item.stockAsignado || 0;
-          const stockActual = item.stockActual || stockAsignado; // Default to assigned if no actual
-          const precioUnitario = parseFloat(item.precioUnitario) || 0;
+        const ventasAlimentosBebestibles = inventoryArray.reduce((total, item) => {
+          const stockAsignado = item.stockInicial || 0;
+          const stockActual = item.stockActual || item.stock?.actual || stockAsignado; // Default to initial if no actual
+          const precioUnitario = parseFloat(item.precioVenta) || 0;
           return total + ((stockAsignado - stockActual) * precioUnitario);
         }, 0);
         
@@ -1078,7 +1124,7 @@ const EventAdminDashboard = () => {
           ventasActividades,
           totalVentas,
           entradas: eventDetails.entradas?.length || 0,
-          alimentosBebestibles: eventDetails.alimentosBebestibles?.length || 0,
+          inventario: inventoryArray.length,
           actividades: eventDetails.actividades?.length || 0
         });
         
@@ -1101,18 +1147,18 @@ const EventAdminDashboard = () => {
         
         // 2. ALIMENTOS Y BEBIDAS SUMMARY
         const alimentosBebidasSummary = {
-          vendidas: (eventDetails.alimentosBebestibles || []).reduce((total, item) => {
-            const stockAsignado = item.stockAsignado || 0;
-            const stockActual = item.stockActual || stockAsignado;
+          vendidas: inventoryArray.reduce((total, item) => {
+            const stockAsignado = item.stockInicial || 0;
+            const stockActual = item.stockActual || item.stock?.actual || stockAsignado;
             return total + (stockAsignado - stockActual);
           }, 0),
-          disponibles: (eventDetails.alimentosBebestibles || []).reduce((total, item) => {
-            return total + (item.stockActual || 0);
+          disponibles: inventoryArray.reduce((total, item) => {
+            return total + (item.stockActual || item.stock?.actual || item.stockInicial || 0);
           }, 0),
-          valorUnitarioPromedio: (eventDetails.alimentosBebestibles || []).length > 0 ? 
-            (eventDetails.alimentosBebestibles || []).reduce((total, item) => {
-              return total + (parseFloat(item.precioUnitario) || 0);
-            }, 0) / (eventDetails.alimentosBebestibles || []).length : 0,
+          valorUnitarioPromedio: inventoryArray.length > 0 ? 
+            inventoryArray.reduce((total, item) => {
+              return total + (parseFloat(item.precioVenta) || 0);
+            }, 0) / inventoryArray.length : 0,
           totalVenta: ventasAlimentosBebestibles
         };
         
@@ -1124,8 +1170,7 @@ const EventAdminDashboard = () => {
           disponibles: (eventDetails.actividades || []).reduce((total, actividad) => {
             const cuposDisponibles = actividad.cuposDisponibles || 0;
             const cuposOcupados = actividad.cuposOcupados || 0;
-            const disponiblesItem = cuposDisponibles - cuposOcupados;
-            return total + disponiblesItem;
+            return total + (cuposDisponibles - cuposOcupados);
           }, 0),
           valorUnitarioPromedio: (eventDetails.actividades || []).length > 0 ? 
             (eventDetails.actividades || []).reduce((total, actividad) => {
@@ -1393,17 +1438,17 @@ const EventAdminDashboard = () => {
                    <Typography variant="body2" sx={{ color: '#6B7280', fontWeight: 600, textAlign: 'center' }}>Precio</Typography>
                    <Typography variant="body2" sx={{ color: '#6B7280', fontWeight: 600, textAlign: 'center' }}>Subtotal</Typography>
                  </Box>
-                 {selectedEvent?.alimentosBebestibles && selectedEvent.alimentosBebestibles.length > 0 ? selectedEvent.alimentosBebestibles.map((item, index) => {
-                   const stockAsignado = item.stockAsignado || 0;
-                   const stockActual = item.stockActual || 0;
+                 {inventory && inventory.length > 0 ? inventory.map((item, index) => {
+                   const stockAsignado = item.stockInicial || 0;
+                   const stockActual = item.stockActual || item.stock?.actual || stockAsignado;
                    const vendidas = stockAsignado - stockActual;
-                   const precio = parseFloat(item.precioUnitario) || 0;
+                   const precio = parseFloat(item.precioVenta) || 0;
                    const subtotal = vendidas * precio;
                    
                    return (
                      <Box key={index} sx={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr', gap: 2, py: 1, borderBottom: '1px solid #E5E7EB' }}>
                        <Typography variant="body2" sx={{ color: '#374151' }}>
-                         {item.nombre || 'Sin nombre'}
+                         {item.nombreProducto || item.nombre || 'Sin nombre'}
                        </Typography>
                        <Typography variant="body2" sx={{ color: '#059669', fontWeight: 600, textAlign: 'center' }}>
                          {vendidas}
