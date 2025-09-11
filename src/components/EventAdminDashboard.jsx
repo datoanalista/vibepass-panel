@@ -703,17 +703,17 @@ const EventAdminDashboard = () => {
   // Function to determine event status
   const getEventStatusForDropdown = (event) => {
     if (!event?.informacionGeneral) {
-      return { status: 'borrador', label: 'Borrador', color: '#6B7280' };
+      return { status: 'borrador', label: 'Borrador', color: '#8B5CF6' }; // Púrpura
     }
 
     // Check if it's cancelled
     if (event.informacionGeneral.estado === 'cancelado') {
-      return { status: 'cancelado', label: 'Cancelado', color: '#EF4444' };
+      return { status: 'cancelado', label: 'Cancelado', color: '#EF4444' }; // Rojo
     }
 
     // Check if it's a draft (no complete information)
     if (!event.informacionGeneral.fechaEvento || !event.informacionGeneral.horaInicio) {
-      return { status: 'borrador', label: 'Borrador', color: '#6B7280' };
+      return { status: 'borrador', label: 'Borrador', color: '#8B5CF6' }; // Púrpura
     }
 
     const now = new Date();
@@ -728,9 +728,9 @@ const EventAdminDashboard = () => {
     // If not today
     if (eventDateOnly.getTime() !== todayDate.getTime()) {
       if (eventDateOnly > todayDate) {
-        return { status: 'programado', label: 'Programado', color: '#3B82F6' };
+        return { status: 'programado', label: 'Programado', color: '#3B82F6' }; // Azul
       } else {
-        return { status: 'finalizado', label: 'Finalizado', color: '#6B7280' };
+        return { status: 'finalizado', label: 'Finalizado', color: '#64748B' }; // Gris azulado
       }
     }
 
@@ -741,11 +741,11 @@ const EventAdminDashboard = () => {
       new Date(startTime.getTime() + 4 * 60 * 60 * 1000); // Default 4 hours if no end time
 
     if (now < startTime) {
-      return { status: 'programado', label: 'Programado', color: '#3B82F6' };
+      return { status: 'programado', label: 'Programado', color: '#3B82F6' }; // Azul
     } else if (now >= startTime && now <= endTime) {
-      return { status: 'activo', label: 'Activo', color: '#10B981' };
+      return { status: 'activo', label: 'En Vivo', color: '#10B981' }; // Verde
     } else {
-      return { status: 'finalizado', label: 'Finalizado', color: '#6B7280' };
+      return { status: 'finalizado', label: 'Finalizado', color: '#64748B' }; // Gris azulado
     }
   };
 
@@ -837,10 +837,39 @@ const EventAdminDashboard = () => {
               MenuProps={{
                 PaperProps: {
                   sx: {
-                    maxHeight: events.length > 6 ? 300 : 'auto',
+                    maxHeight: 320,
+                    minHeight: events.length > 6 ? 320 : 'auto',
+                    borderRadius: '12px',
+                    boxShadow: '0 10px 25px rgba(0, 0, 0, 0.15)',
+                    border: '1px solid #E5E7EB',
                     '& .MuiMenuItem-root': {
-                      fontSize: '14px'
-                    }
+                      fontSize: '14px',
+                      borderRadius: '8px',
+                      margin: '2px 8px',
+                      '&:hover': {
+                        bgcolor: 'rgba(59, 130, 246, 0.08)',
+                        transform: 'translateX(2px)',
+                        transition: 'all 0.2s ease'
+                      }
+                    },
+                    // Barra de desplazamiento personalizada
+                    '&::-webkit-scrollbar': {
+                      width: '6px',
+                    },
+                    '&::-webkit-scrollbar-track': {
+                      background: 'transparent',
+                      borderRadius: '10px',
+                    },
+                    '&::-webkit-scrollbar-thumb': {
+                      background: 'rgba(107, 114, 128, 0.8)', // 20% transparente
+                      borderRadius: '10px',
+                      '&:hover': {
+                        background: 'rgba(107, 114, 128, 1)',
+                      }
+                    },
+                    // Para Firefox
+                    scrollbarWidth: 'thin',
+                    scrollbarColor: 'rgba(107, 114, 128, 0.8) transparent'
                   }
                 }
               }}
@@ -882,26 +911,43 @@ const EventAdminDashboard = () => {
 
               {/* Search input when more than 6 events */}
               {events.length > 6 && (
-                <Box sx={{ px: 2, py: 1, borderBottom: '1px solid #E5E7EB' }}>
-                  <input
-                    type="text"
-                    placeholder="Buscar evento..."
-                    value={eventSearchTerm}
-                    onChange={(e) => {
-                      e.stopPropagation();
-                      setEventSearchTerm(e.target.value);
-                    }}
-                    onClick={(e) => e.stopPropagation()}
-                    style={{
-                      width: '100%',
-                      padding: '8px 12px',
-                      border: '1px solid #D1D5DB',
-                      borderRadius: '6px',
-                      fontSize: '14px',
-                      outline: 'none',
-                      backgroundColor: '#F9FAFB'
-                    }}
-                  />
+                <Box sx={{ 
+                  px: 2, 
+                  py: 1.5, 
+                  borderBottom: '1px solid #E5E7EB',
+                  bgcolor: '#F8FAFC'
+                }}>
+                  <Box sx={{ position: 'relative' }}>
+                    <input
+                      type="text"
+                      placeholder="🔍 Buscar evento..."
+                      value={eventSearchTerm}
+                      onChange={(e) => {
+                        e.stopPropagation();
+                        setEventSearchTerm(e.target.value);
+                      }}
+                      onClick={(e) => e.stopPropagation()}
+                      style={{
+                        width: '100%',
+                        padding: '10px 16px',
+                        border: '2px solid #E2E8F0',
+                        borderRadius: '10px',
+                        fontSize: '14px',
+                        outline: 'none',
+                        backgroundColor: '#FFFFFF',
+                        transition: 'all 0.2s ease',
+                        fontFamily: 'inherit'
+                      }}
+                      onFocus={(e) => {
+                        e.target.style.borderColor = '#3B82F6';
+                        e.target.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
+                      }}
+                      onBlur={(e) => {
+                        e.target.style.borderColor = '#E2E8F0';
+                        e.target.style.boxShadow = 'none';
+                      }}
+                    />
+                  </Box>
                 </Box>
               )}
 
@@ -945,13 +991,25 @@ const EventAdminDashboard = () => {
                       key={event.id} 
                       value={event.id}
                       sx={{
-                        '&:hover': {
-                          bgcolor: 'rgba(239, 68, 68, 0.1)'
-                        },
                         display: 'flex',
                         justifyContent: 'space-between',
                         alignItems: 'center',
-                        py: 1.5
+                        py: 1.5,
+                        px: 2,
+                        minHeight: '48px',
+                        '&:hover': {
+                          bgcolor: `${statusInfo.color}15`, // 15 es aproximadamente 8% de opacidad
+                          borderLeft: `3px solid ${statusInfo.color}`,
+                          paddingLeft: '13px' // Compensar el border
+                        },
+                        '&.Mui-selected': {
+                          bgcolor: `${statusInfo.color}20`,
+                          borderLeft: `3px solid ${statusInfo.color}`,
+                          paddingLeft: '13px',
+                          '&:hover': {
+                            bgcolor: `${statusInfo.color}25`
+                          }
+                        }
                       }}
                     >
                       <Box sx={{ flex: 1, mr: 1 }}>
@@ -963,15 +1021,29 @@ const EventAdminDashboard = () => {
                         sx={{
                           bgcolor: statusInfo.color,
                           color: 'white',
-                          px: 1,
-                          py: 0.25,
-                          borderRadius: '12px',
+                          px: 1.5,
+                          py: 0.5,
+                          borderRadius: '16px',
                           fontSize: '10px',
-                          fontWeight: 600,
+                          fontWeight: 700,
                           textTransform: 'uppercase',
-                          letterSpacing: '0.5px',
+                          letterSpacing: '0.8px',
                           minWidth: 'fit-content',
-                          textAlign: 'center'
+                          textAlign: 'center',
+                          boxShadow: `0 2px 8px ${statusInfo.color}40`,
+                          border: `1px solid ${statusInfo.color}`,
+                          position: 'relative',
+                          '&::before': {
+                            content: '""',
+                            position: 'absolute',
+                            top: 0,
+                            left: 0,
+                            right: 0,
+                            bottom: 0,
+                            borderRadius: '16px',
+                            background: `linear-gradient(135deg, ${statusInfo.color}E6, ${statusInfo.color}CC)`,
+                            zIndex: -1
+                          }
                         }}
                       >
                         {statusInfo.label}
