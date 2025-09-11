@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import API_CONFIG from '../config/api';
 
@@ -21,12 +21,6 @@ const getEventStatus = (event) => {
   const todayDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
   const eventDateOnly = new Date(eventDate.getFullYear(), eventDate.getMonth(), eventDate.getDate());
   
-  console.log('🔍 DEBUG - Event date string:', eventDateString);
-  console.log('🔍 DEBUG - Today date:', todayDate.toDateString());
-  console.log('🔍 DEBUG - Event date only:', eventDateOnly.toDateString());
-  console.log('🔍 DEBUG - Are dates equal?', eventDateOnly.getTime() === todayDate.getTime());
-  console.log('🔍 DEBUG - Current time:', now.toISOString());
-  console.log('🔍 DEBUG - Event times:', event.informacionGeneral.horaInicio, 'to', event.informacionGeneral.horaTermino);
   
   // Si no es el día del evento
   if (eventDateOnly.getTime() !== todayDate.getTime()) {
@@ -314,21 +308,44 @@ const EventAdminDashboard = () => {
     try {
       setEventsLoading(true);
       
-      const response = await fetch(API_CONFIG.ENDPOINTS.EVENTS, API_CONFIG.REQUEST_CONFIG);
+      // Agregar parámetros para obtener más eventos
+      const url = `${API_CONFIG.ENDPOINTS.EVENTS}?limit=500&page=1`;
+      const response = await fetch(url, API_CONFIG.REQUEST_CONFIG);
       const result = await response.json();
       
-      if (response.ok && result.status === 'success') {
-        const eventsList = result.data.events || [];
+      if (response.ok) {
+        // Intentar diferentes estructuras de respuesta
+        let eventsList = [];
+        
+        if (result.status === 'success' && result.data?.events) {
+          eventsList = result.data.events;
+        } else if (result.data && Array.isArray(result.data)) {
+          eventsList = result.data;
+        } else if (Array.isArray(result)) {
+          eventsList = result;
+        } else if (result.events && Array.isArray(result.events)) {
+          eventsList = result.events;
+        }
+        
+        // Log temporal para ver la estructura de los eventos
+        if (eventsList.length > 0) {
+          console.log('📊 Estructura del primer evento:', eventsList[0]);
+          console.log('📊 Estado en informacionGeneral:', eventsList[0].informacionGeneral?.estado);
+          console.log('📊 Estado directo:', eventsList[0].estado);
+        }
+        
         setEvents(eventsList);
         
         if (eventsList.length > 0 && !selectedEventId) {
           setSelectedEventId(eventsList[0].id);
         }
       } else {
-        console.error('❌ API Error:', result.message);
+        console.error('❌ API Error:', result.message || 'Error desconocido');
+        setEvents([]);
       }
     } catch (err) {
       console.error('💥 Error fetching events:', err);
+      setEvents([]);
     } finally {
       setEventsLoading(false);
     }
@@ -701,7 +718,317 @@ const EventAdminDashboard = () => {
     </Box>
   );
 
-  // Componente Event Selector (debajo del header) - Versión simplificada
+  // Custom Event Dropdown Component
+  const EventDropdown = () => {
+    const [isOpen, setIsOpen] = useState(false);
+    const [searchTerm, setSearchTerm] = useState('');
+    const dropdownRef = useRef(null);
+
+    // Filter events based on search term
+    const filteredEvents = events.filter(event => {
+      const eventName = event.informacionGeneral?.nombreEvento || '';
+      const eventDate = event.informacionGeneral?.fechaEvento || '';
+      return eventName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+             eventDate.includes(searchTerm);
+    });
+
+    // Sort events by status priority: activo > programado > borrador > finalizado > cancelado
+    const sortedEvents = filteredEvents.sort((a, b) => {
+      const getStatusPriority = (event) => {
+        const estado = (event.informacionGeneral?.estado || event.estado || 'programado').toLowerCase();
+        switch(estado) {
+          case 'activo': return 1;
+          case 'programado': return 2;
+          case 'borrador': return 3;
+          case 'finalizado': return 4;
+          case 'cancelado': return 5;
+          default: return 6;
+        }
+      };
+      
+      const priorityA = getStatusPriority(a);
+      const priorityB = getStatusPriority(b);
+      
+      // Si tienen la misma prioridad, ordenar por nombre
+      if (priorityA === priorityB) {
+        const nameA = a.informacionGeneral?.nombreEvento || '';
+        const nameB = b.informacionGeneral?.nombreEvento || '';
+        return nameA.localeCompare(nameB);
+      }
+      
+      return priorityA - priorityB;
+    });
+
+
+    // Close dropdown when clicking outside
+    useEffect(() => {
+      const handleClickOutside = (event) => {
+        if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+          setIsOpen(false);
+          setSearchTerm('');
+        }
+      };
+
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
+    const handleEventSelect = (eventId) => {
+      setSelectedEventId(eventId);
+      setIsOpen(false);
+      setSearchTerm('');
+    };
+
+    const getEventDisplayInfo = (event) => {
+      const eventName = event.informacionGeneral?.nombreEvento || 'Evento sin nombre';
+      const eventDate = event.informacionGeneral?.fechaEvento;
+      
+      let formattedDate = '';
+      if (eventDate) {
+        try {
+          const [year, month, day] = eventDate.split('-');
+          const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+          const dayNum = date.getDate();
+          const monthName = date.toLocaleDateString('es-CL', { month: 'short' });
+          const yearNum = date.getFullYear();
+          formattedDate = `${dayNum} de ${monthName} de ${yearNum}`;
+        } catch (error) {
+          console.error('Error formatting date:', error);
+        }
+      }
+      
+      const displayText = formattedDate ? `${eventName} / ${formattedDate}` : eventName;
+      
+      // Usar el campo "estado" de informacionGeneral
+      const estado = event.informacionGeneral?.estado || event.estado || 'programado';
+      const status = {
+        status: estado,
+        color: (() => {
+          switch(estado.toLowerCase()) {
+            case 'programado': return '#3B82F6'; // Azul
+            case 'activo': return '#EF4444'; // Rojo
+            case 'borrador': return '#F59E0B'; // Amarillo/Naranja
+            case 'finalizado': return '#059669'; // Verde oscuro
+            case 'cancelado': return '#6B7280'; // Gris
+            default: return '#6B7280';
+          }
+        })(),
+        message: (() => {
+          switch(estado.toLowerCase()) {
+            case 'programado': return 'Evento programado';
+            case 'activo': return 'Evento activo';
+            case 'borrador': return 'Borrador';
+            case 'finalizado': return 'Evento finalizado';
+            case 'cancelado': return 'Evento cancelado';
+            default: return 'Estado desconocido';
+          }
+        })()
+      };
+      
+      return { displayText, status };
+    };
+                  
+                  return (
+      <Box sx={{ position: 'relative', minWidth: 380 }} ref={dropdownRef}>
+        {/* Dropdown Trigger */}
+        <Box
+          onClick={() => setIsOpen(!isOpen)}
+          sx={{
+            minWidth: 380,
+            height: 40,
+            backgroundColor: 'white',
+            border: '1px solid #E5E7EB',
+            borderRadius: '8px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            px: 2,
+            cursor: 'pointer',
+            '&:hover': {
+              borderColor: '#D1D5DB'
+            }
+          }}
+        >
+          <Typography sx={{
+            color: '#374151',
+            fontSize: '14px',
+            fontWeight: 500,
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+            flex: 1
+          }}>
+            {selectedEvent ? getEventDisplayInfo(selectedEvent).displayText : 'Seleccionar evento'}
+          </Typography>
+          <KeyboardArrowDownIcon 
+            sx={{ 
+              color: '#6B7280', 
+              transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+              transition: 'transform 0.2s ease'
+            }} 
+          />
+        </Box>
+
+        {/* Dropdown Menu */}
+        {isOpen && (
+          <Box sx={{
+            position: 'absolute',
+            top: '100%',
+            left: 0,
+            right: 0,
+            mt: 1,
+            backgroundColor: 'white',
+            border: '1px solid #E5E7EB',
+            borderRadius: '8px',
+            boxShadow: '0px 4px 12px rgba(0, 0, 0, 0.15)',
+            zIndex: 1000,
+            overflow: 'hidden'
+          }}>
+            {/* Search Input */}
+            <Box sx={{ p: 2, borderBottom: '1px solid #F3F4F6' }}>
+              <Box sx={{
+                display: 'flex',
+                alignItems: 'center',
+                backgroundColor: '#F9FAFB',
+                borderRadius: '6px',
+                px: 2,
+                py: 1
+              }}>
+                <SearchIcon sx={{ color: '#6B7280', fontSize: '18px', mr: 1 }} />
+                <input
+                  type="text"
+                  placeholder="Buscar evento..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  style={{
+                    border: 'none',
+                    outline: 'none',
+                    backgroundColor: 'transparent',
+                    fontSize: '14px',
+                    color: '#374151',
+                    width: '100%',
+                    fontFamily: 'inherit'
+                  }}
+                />
+              </Box>
+            </Box>
+
+            {/* Events List */}
+            <Box sx={{
+              maxHeight: '400px', // Aumentado para mostrar más eventos
+              overflowY: 'auto',
+              '&::-webkit-scrollbar': {
+                width: '4px'
+              },
+              '&::-webkit-scrollbar-track': {
+                backgroundColor: 'transparent'
+              },
+              '&::-webkit-scrollbar-thumb': {
+                backgroundColor: 'rgba(156, 163, 175, 0.5)',
+                borderRadius: '2px',
+                '&:hover': {
+                  backgroundColor: 'rgba(156, 163, 175, 0.7)'
+                }
+              }
+            }}>
+              {eventsLoading ? (
+                <Box sx={{ p: 3, textAlign: 'center' }}>
+                  <Typography sx={{ color: '#6B7280', fontSize: '14px' }}>
+                    Cargando eventos...
+                  </Typography>
+                </Box>
+              ) : sortedEvents.length === 0 ? (
+                <Box sx={{ p: 3, textAlign: 'center' }}>
+                  <Typography sx={{ color: '#6B7280', fontSize: '14px' }}>
+                    {searchTerm ? 'No se encontraron eventos' : 'No hay eventos disponibles'}
+                  </Typography>
+                </Box>
+              ) : (
+                sortedEvents.map((event) => {
+                  const { displayText, status } = getEventDisplayInfo(event);
+                  const isSelected = event.id === selectedEventId;
+                  
+                  return (
+                    <Box
+                      key={event.id} 
+                      onClick={() => handleEventSelect(event.id)}
+                      sx={{
+                        display: 'flex',
+                        alignItems: 'flex-start',
+                        px: 2.5,
+                        py: 2,
+                        cursor: 'pointer',
+                        backgroundColor: isSelected ? '#F0F9FF' : 'transparent',
+                        borderLeft: isSelected ? '3px solid #3B82F6' : '3px solid transparent',
+                        transition: 'all 0.2s ease',
+                        '&:hover': {
+                          backgroundColor: isSelected ? '#F0F9FF' : '#F8FAFC',
+                          borderLeft: '3px solid #E5E7EB'
+                        }
+                      }}
+                    >
+                      {/* Event Info */}
+                      <Box sx={{ flex: 1, minWidth: 0 }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+                          <Typography sx={{
+                            fontSize: '14px',
+                            fontWeight: isSelected ? 600 : 500,
+                            color: '#374151',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                            lineHeight: 1.4,
+                            flex: 1,
+                            mr: 1
+                          }}>
+                            {displayText}
+                          </Typography>
+                          
+                          {/* Status Badge - Más pequeño y proporcional */}
+                          <Box sx={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            backgroundColor: status.color,
+                            color: 'white',
+                            px: 0.3,
+                            py: 0.1,
+                            borderRadius: '10px',
+                            flexShrink: 0,
+                            minWidth: 'fit-content'
+                          }}>
+                            <Typography sx={{
+                              fontSize: '10px',
+                              fontWeight: 400,
+                              letterSpacing: '0.005em',
+                              textTransform: 'capitalize',
+                              fontFamily: '"Inter", "Roboto", "Helvetica", "Arial", sans-serif',
+                              fontStyle: 'italic',
+                              color: 'white !important',
+                              lineHeight: 1,
+                              transform: 'scale(0.6)',
+                              transformOrigin: 'center'
+                            }}>
+                              {status.status === 'programado' && 'Programado'}
+                              {status.status === 'activo' && 'Activo'}
+                              {status.status === 'borrador' && 'Borrador'}
+                              {status.status === 'finalizado' && 'Finalizado'}
+                              {status.status === 'cancelado' && 'Cancelado'}
+                            </Typography>
+                          </Box>
+                        </Box>
+                      </Box>
+                    </Box>
+                  );
+                })
+              )}
+        </Box>
+      </Box>
+        )}
+      </Box>
+    );
+  };
+
+  // Componente Event Selector (debajo del header) - Con nuevo dropdown
   const EventSelector = () => (
     <Box sx={{
       width: '100%',
@@ -717,7 +1044,6 @@ const EventAdminDashboard = () => {
         maxWidth: '1200px',
         mx: 'auto'
       }}>
-
         <Typography sx={{
           fontSize: '18px',
           fontWeight: 600,
@@ -726,106 +1052,7 @@ const EventAdminDashboard = () => {
           Evento - "{getSelectedEventDisplayName()}"
         </Typography>
 
-
-        <Box sx={{ 
-          minWidth: 250,
-          height: 40,
-          backgroundColor: 'transparent',
-          borderRadius: '8px',
-          display: 'flex',
-          alignItems: 'center',
-          px: 2,
-          cursor: 'pointer',
-          position: 'relative'
-        }}>
-          <FormControl fullWidth>
-            <Select
-            value={selectedEventId}
-            onChange={(e) => setSelectedEventId(e.target.value)}
-              disabled={eventsLoading || events.length === 0}
-              variant="standard"
-              disableUnderline
-              sx={{
-                color: '#374151 !important',
-                fontSize: '14px',
-                fontWeight: 600,
-                '& .MuiSelect-select': {
-                  color: '#374151 !important',
-                  backgroundColor: 'transparent !important',
-                  padding: '8px 30px 8px 0 !important',
-                  textAlign: 'right !important'
-                },
-                '& .MuiSelect-icon': {
-                  color: '#374151 !important'
-                },
-                '& .MuiInputBase-input': {
-                  color: '#374151 !important',
-                  textAlign: 'right !important'
-                },
-                '&:before': {
-                  borderBottom: 'none !important'
-                },
-                '&:after': {
-                  borderBottom: 'none !important'
-                },
-                '&:hover:not(.Mui-disabled):before': {
-                  borderBottom: 'none !important'
-                }
-              }}
-              IconComponent={KeyboardArrowDownIcon}
-            >
-              {eventsLoading ? (
-                <MenuItem disabled>
-                  <Typography sx={{ color: '#6B7280' }}>
-                    Cargando eventos...
-                  </Typography>
-                </MenuItem>
-              ) : events.length === 0 ? (
-                <MenuItem disabled>
-                  <Typography sx={{ color: '#6B7280' }}>
-                    No hay eventos disponibles
-                  </Typography>
-                </MenuItem>
-              ) : (
-                events.map((event) => {
-                  const eventName = event.informacionGeneral?.nombreEvento || 'Evento sin nombre';
-                  const eventDate = event.informacionGeneral?.fechaEvento;
-                  
-                  let formattedDate = '';
-                  if (eventDate) {
-                    try {
-                      // Parsear la fecha como local para evitar problemas de timezone
-                      const [year, month, day] = eventDate.split('-');
-                      const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
-                      const dayNum = date.getDate();
-                      const monthName = date.toLocaleDateString('es-CL', { month: 'short' });
-                      const yearNum = date.getFullYear();
-                      formattedDate = `${dayNum} de ${monthName} de ${yearNum}`;
-                    } catch (error) {
-                      console.error('Error formatting date:', error);
-                    }
-                  }
-                  
-                  const displayText = formattedDate ? `${eventName} / ${formattedDate}` : eventName;
-                  
-                  return (
-                    <MenuItem 
-                      key={event.id} 
-                      value={event.id}
-                      sx={{
-                        '&:hover': {
-                          bgcolor: 'rgba(239, 68, 68, 0.1)'
-                        }
-                      }}
-                    >
-                      {displayText}
-                    </MenuItem>
-                  );
-                })
-              )}
-            </Select>
-          </FormControl>
-        </Box>
+        <EventDropdown />
       </Box>
     </Box>
   );
