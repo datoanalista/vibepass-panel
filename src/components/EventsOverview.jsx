@@ -979,6 +979,19 @@ const EventsOverview = () => {
             
             {/* Iconos de acción */}
             <Box sx={{ display: 'flex', gap: 1, flex: '0 0 auto' }}>
+              <Tooltip title="Ver detalles del evento" arrow>
+                <IconButton 
+                  size="small"
+                  onClick={() => handleViewEventDetails(event)}
+                  sx={{ 
+                    color: '#6B7280',
+                    '&:hover': { bgcolor: 'rgba(107, 114, 128, 0.1)' }
+                  }}
+                >
+                  <VisibilityIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+              
               <Tooltip title="Cancelar evento" arrow>
                 <IconButton 
                   size="small"
@@ -1211,6 +1224,19 @@ const EventsOverview = () => {
                   {/* Iconos de acción */}
                   <TableCell align="center">
                     <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center' }}>
+                      <Tooltip title="Ver detalles del evento" arrow>
+                        <IconButton 
+                          size="small"
+                          onClick={() => handleViewEventDetails(event)}
+                          sx={{ 
+                            color: '#6B7280',
+                            '&:hover': { bgcolor: 'rgba(107, 114, 128, 0.1)' }
+                          }}
+                        >
+                          <VisibilityIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                      
                       <Tooltip title="Cancelar evento" arrow>
                     <IconButton 
                       size="small"
@@ -1534,6 +1560,18 @@ const EventsOverview = () => {
                   {/* Iconos de acción */}
                   <TableCell align="center">
                     <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center' }}>
+                      <Tooltip title="Ver detalles del evento" arrow>
+                        <IconButton 
+                          size="small"
+                          onClick={() => handleViewEventDetails(draft)}
+                          sx={{ 
+                            color: '#6B7280',
+                            '&:hover': { bgcolor: 'rgba(107, 114, 128, 0.1)' }
+                          }}
+                        >
+                          <VisibilityIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
                       <Tooltip title="Continuar borrador" arrow>
                         <IconButton 
                           size="small"
