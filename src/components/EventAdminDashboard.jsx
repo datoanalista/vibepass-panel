@@ -103,7 +103,9 @@ import {
   Person as PersonIcon,
   Share as ShareIcon,
   Add as AddIcon,
-  Visibility as VisibilityIcon
+  Visibility as VisibilityIcon,
+  ExpandMore as ExpandMoreIcon,
+  ExpandLess as ExpandLessIcon
 } from '@mui/icons-material';
 import Usuarios from './Usuarios';
 import AddUserForm from './AddUserForm';
@@ -1091,19 +1093,23 @@ const EventAdminDashboard = () => {
     const [showSalesModal, setShowSalesModal] = useState(false);
     const [salesData, setSalesData] = useState([]);
     const [salesLoading, setSalesLoading] = useState(false);
+    const [salesPage, setSalesPage] = useState(1);
+    const [salesHasMore, setSalesHasMore] = useState(true);
+    const [salesTotal, setSalesTotal] = useState(0);
+    const [expandedSales, setExpandedSales] = useState(new Set());
 
-    // Función para obtener las ventas del evento
-    const fetchSalesData = async () => {
+    // Función para obtener las ventas del evento con paginación
+    const fetchSalesData = async (page = 1, append = false) => {
       if (!selectedEventId) {
         console.log('🚫 DEBUG: No selectedEventId, aborting fetchSalesData');
         return;
       }
       
-      console.log('🚀 DEBUG: Starting fetchSalesData for eventId:', selectedEventId);
+      console.log('🚀 DEBUG: Starting fetchSalesData for eventId:', selectedEventId, 'page:', page);
       
       try {
         setSalesLoading(true);
-        const url = API_CONFIG.ENDPOINTS.SALES_BY_EVENT(selectedEventId);
+        const url = `${API_CONFIG.ENDPOINTS.SALES_BY_EVENT(selectedEventId)}?page=${page}&limit=10`;
         console.log('📡 DEBUG: Fetching URL:', url);
         
         const response = await fetch(url, API_CONFIG.REQUEST_CONFIG);
@@ -1116,22 +1122,33 @@ const EventAdminDashboard = () => {
         
         const salesResult = await response.json();
         console.log('📊 DEBUG: Raw API response:', salesResult);
-        console.log('📊 DEBUG: Response type:', typeof salesResult);
-        console.log('📊 DEBUG: Response keys:', Object.keys(salesResult || {}));
         
         // Manejar diferentes estructuras de respuesta
         const sales = salesResult.data?.sales || salesResult.data || salesResult.sales || salesResult || [];
+        const pagination = salesResult.data?.pagination || {};
+        
         console.log('🔍 DEBUG: Extracted sales:', sales);
-        console.log('🔍 DEBUG: Sales is array:', Array.isArray(sales));
-        console.log('🔍 DEBUG: Sales length:', Array.isArray(sales) ? sales.length : 'N/A');
+        console.log('🔍 DEBUG: Pagination info:', pagination);
         
         const finalSales = Array.isArray(sales) ? sales : [];
-        console.log('✅ DEBUG: Final sales data:', finalSales);
-        setSalesData(finalSales);
+        
+        if (append) {
+          setSalesData(prevData => [...prevData, ...finalSales]);
+        } else {
+          setSalesData(finalSales);
+        }
+        
+        // Actualizar información de paginación
+        setSalesTotal(pagination.total || finalSales.length);
+        setSalesHasMore(pagination.hasNext || false);
+        setSalesPage(page);
+        
+        console.log('✅ DEBUG: Final sales data length:', finalSales.length);
+        console.log('✅ DEBUG: Has more pages:', pagination.hasNext);
       } catch (error) {
         console.error('❌ DEBUG: Error fetching sales data:', error);
         console.error('❌ DEBUG: Error message:', error.message);
-        setSalesData([]);
+        if (!append) setSalesData([]);
       } finally {
         setSalesLoading(false);
         console.log('🏁 DEBUG: fetchSalesData completed');
@@ -1143,8 +1160,36 @@ const EventAdminDashboard = () => {
       console.log('🎯 DEBUG: Opening sales modal for event:', selectedEventId);
       console.log('🎯 DEBUG: Selected event object:', selectedEvent);
       console.log('🎯 DEBUG: Event name:', selectedEvent?.informacionGeneral?.nombreEvento);
+      
+      // Reset estados
+      setSalesData([]);
+      setSalesPage(1);
+      setSalesHasMore(true);
+      setSalesTotal(0);
+      setExpandedSales(new Set());
+      
       setShowSalesModal(true);
-      fetchSalesData();
+      fetchSalesData(1, false);
+    };
+
+    // Función para cargar más ventas
+    const loadMoreSales = () => {
+      if (salesHasMore && !salesLoading) {
+        fetchSalesData(salesPage + 1, true);
+      }
+    };
+
+    // Función para toggle colapso de venta
+    const toggleSaleExpanded = (saleIndex) => {
+      setExpandedSales(prev => {
+        const newSet = new Set(prev);
+        if (newSet.has(saleIndex)) {
+          newSet.delete(saleIndex);
+        } else {
+          newSet.add(saleIndex);
+        }
+        return newSet;
+      });
     };
 
     // Removed automatic time updates to prevent API spam
@@ -2190,35 +2235,40 @@ const EventAdminDashboard = () => {
                </Typography>
              </Box>
            ) : (
-             <TableContainer>
-               <Table>
-                 <TableHead>
-                   <TableRow sx={{ bgcolor: '#F9FAFB' }}>
-                     <TableCell sx={{ fontWeight: 600, color: '#374151' }}>Fecha</TableCell>
-                     <TableCell sx={{ fontWeight: 600, color: '#374151' }}>Cliente</TableCell>
-                     <TableCell sx={{ fontWeight: 600, color: '#374151' }}>Tipo Entrada</TableCell>
-                     <TableCell sx={{ fontWeight: 600, color: '#374151', textAlign: 'center' }}>Cantidad</TableCell>
-                     <TableCell sx={{ fontWeight: 600, color: '#374151', textAlign: 'center' }}>Precio Unit.</TableCell>
-                     <TableCell sx={{ fontWeight: 600, color: '#374151', textAlign: 'center' }}>Total</TableCell>
-                     <TableCell sx={{ fontWeight: 600, color: '#374151', textAlign: 'center' }}>Estado</TableCell>
-                   </TableRow>
-                 </TableHead>
-                 <TableBody>
-                   {salesData.map((sale, index) => (
-                     <TableRow 
-                       key={index}
+             <Box sx={{ maxHeight: '70vh', overflow: 'auto' }}>
+               {salesData.map((sale, saleIndex) => {
+                 const isExpanded = expandedSales.has(saleIndex);
+                 
+                 return (
+                   <Box key={saleIndex} sx={{ mb: 2, border: '1px solid #E5E7EB', borderRadius: '8px', overflow: 'hidden' }}>
+                     
+                     {/* Header de la Venta - Clickeable */}
+                     <Box 
+                       onClick={() => toggleSaleExpanded(saleIndex)}
                        sx={{ 
-                         '&:hover': { bgcolor: '#F9FAFB' },
-                         '&:nth-of-type(even)': { bgcolor: '#FAFBFC' }
+                         bgcolor: '#F9FAFB', 
+                         p: 2, 
+                         borderBottom: isExpanded ? '1px solid #E5E7EB' : 'none',
+                         cursor: 'pointer',
+                         '&:hover': { bgcolor: '#F3F4F6' },
+                         transition: 'background-color 0.2s'
                        }}
                      >
-                       <TableCell sx={{ fontSize: '14px' }}>
-                         {sale.createdAt ? new Date(sale.createdAt).toLocaleDateString('es-CL') : 
-                          sale.timestamp ? new Date(sale.timestamp).toLocaleDateString('es-CL') : 
-                          sale.fecha ? new Date(sale.fecha).toLocaleDateString('es-CL') : '-'}
-                       </TableCell>
-                       <TableCell sx={{ fontSize: '14px' }}>
-                         <Box>
+                       <Stack direction="row" justifyContent="space-between" alignItems="center">
+                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                           {isExpanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+                           <Box>
+                             <Typography variant="h6" sx={{ fontWeight: 600, color: '#374151', fontSize: '16px' }}>
+                               Venta #{sale.saleNumber || `VTA-${saleIndex + 1}`}
+                             </Typography>
+                             <Typography variant="body2" sx={{ color: '#6B7280' }}>
+                               {sale.createdAt ? new Date(sale.createdAt).toLocaleDateString('es-CL') : 
+                                sale.timestamp ? new Date(sale.timestamp).toLocaleDateString('es-CL') : 
+                                sale.fecha ? new Date(sale.fecha).toLocaleDateString('es-CL') : '-'}
+                             </Typography>
+                           </Box>
+                         </Box>
+                         <Box sx={{ textAlign: 'center' }}>
                            <Typography variant="body2" sx={{ fontWeight: 500, color: '#374151' }}>
                              {sale.attendees?.[0]?.datosPersonales?.nombreCompleto || 
                               sale.cliente?.nombre || 
@@ -2230,54 +2280,259 @@ const EventAdminDashboard = () => {
                               sale.emailCliente || ''}
                            </Typography>
                          </Box>
-                       </TableCell>
-                       <TableCell sx={{ fontSize: '14px' }}>
-                         {sale.tickets?.items?.[0]?.tipoEntrada || 
-                          sale.tipoEntrada || 
-                          sale.entrada?.tipo || 'General'}
-                       </TableCell>
-                       <TableCell sx={{ fontSize: '14px', textAlign: 'center' }}>
-                         {sale.tickets?.items?.[0]?.cantidad || 
-                          sale.cantidad || 
-                          sale.cantidadTickets || 1}
-                       </TableCell>
-                       <TableCell sx={{ fontSize: '14px', textAlign: 'center' }}>
-                         {formatCurrency(sale.tickets?.items?.[0]?.precio || 
-                                        sale.precioUnitario || 
-                                        sale.precio || 0)}
-                       </TableCell>
-                       <TableCell sx={{ fontSize: '14px', textAlign: 'center', fontWeight: 600, color: '#10B981' }}>
-                         {formatCurrency(sale.totals?.subtotalTickets || 
-                                        sale.tickets?.subtotal || 
-                                        sale.total || 
-                                        (sale.cantidad || 1) * (sale.precioUnitario || sale.precio || 0))}
-                       </TableCell>
-                       <TableCell sx={{ textAlign: 'center' }}>
-                         <Box sx={{
-                           display: 'inline-block',
-                           px: 2,
-                           py: 0.5,
-                           borderRadius: '12px',
-                           fontSize: '12px',
-                           fontWeight: 500,
-                           bgcolor: (sale.status || 'completed').toLowerCase() === 'completed' ? '#DCFCE7' : '#FEF3C7',
-                           color: (sale.status || 'completed').toLowerCase() === 'completed' ? '#166534' : '#92400E'
-                         }}>
-                           {(sale.status || 'completed') === 'completed' ? 'Pagado' : 
-                            (sale.status || 'Pagado').charAt(0).toUpperCase() + (sale.status || 'Pagado').slice(1)}
+                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                           <Typography variant="h6" sx={{ fontWeight: 700, color: '#10B981' }}>
+                             {formatCurrency(sale.totals?.total || 0)}
+                           </Typography>
+                           <Box sx={{
+                             display: 'inline-block',
+                             px: 2,
+                             py: 0.5,
+                             borderRadius: '12px',
+                             fontSize: '12px',
+                             fontWeight: 500,
+                             bgcolor: (sale.status || 'completed').toLowerCase() === 'completed' ? '#DCFCE7' : '#FEF3C7',
+                             color: (sale.status || 'completed').toLowerCase() === 'completed' ? '#166534' : '#92400E'
+                           }}>
+                             {(sale.status || 'completed') === 'completed' ? 'Pagado' : 
+                              (sale.status || 'Pagado').charAt(0).toUpperCase() + (sale.status || 'Pagado').slice(1)}
+                           </Box>
                          </Box>
-                       </TableCell>
-                     </TableRow>
-                   ))}
-                 </TableBody>
-               </Table>
-             </TableContainer>
+                       </Stack>
+                     </Box>
+
+                   {/* Contenido detallado - Solo visible cuando está expandido */}
+                   {isExpanded && (
+                     <Box sx={{ p: 2 }}>
+                       
+                       {/* Sección Tickets */}
+                       {sale.tickets?.items && sale.tickets.items.length > 0 && (
+                       <Box sx={{ mb: 3 }}>
+                         <Typography variant="subtitle1" sx={{ fontWeight: 600, color: '#374151', mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+                           🎫 Tickets
+                           <Typography component="span" sx={{ fontSize: '12px', color: '#6B7280', fontWeight: 400 }}>
+                             (Subtotal: {formatCurrency(sale.tickets.subtotal || 0)})
+                           </Typography>
+                         </Typography>
+                         <TableContainer>
+                           <Table size="small">
+                             <TableHead>
+                               <TableRow sx={{ bgcolor: '#F8FAFC' }}>
+                                 <TableCell sx={{ fontSize: '12px', fontWeight: 600 }}>Tipo</TableCell>
+                                 <TableCell sx={{ fontSize: '12px', fontWeight: 600, textAlign: 'center' }}>Cantidad</TableCell>
+                                 <TableCell sx={{ fontSize: '12px', fontWeight: 600, textAlign: 'center' }}>Precio Unit.</TableCell>
+                                 <TableCell sx={{ fontSize: '12px', fontWeight: 600, textAlign: 'center' }}>Subtotal</TableCell>
+                               </TableRow>
+                             </TableHead>
+                             <TableBody>
+                               {sale.tickets.items.map((ticket, ticketIndex) => (
+                                 <TableRow key={ticketIndex}>
+                                   <TableCell sx={{ fontSize: '12px' }}>{ticket.tipoEntrada || 'General'}</TableCell>
+                                   <TableCell sx={{ fontSize: '12px', textAlign: 'center' }}>{ticket.cantidad}</TableCell>
+                                   <TableCell sx={{ fontSize: '12px', textAlign: 'center' }}>{formatCurrency(ticket.precio)}</TableCell>
+                                   <TableCell sx={{ fontSize: '12px', textAlign: 'center', fontWeight: 600, color: '#10B981' }}>
+                                     {formatCurrency(ticket.subtotal)}
+                                   </TableCell>
+                                 </TableRow>
+                               ))}
+                             </TableBody>
+                           </Table>
+                         </TableContainer>
+                       </Box>
+                     )}
+
+                     {/* Sección Alimentos y Bebidas */}
+                     {sale.food?.items && sale.food.items.length > 0 && (
+                       <Box sx={{ mb: 3 }}>
+                         <Typography variant="subtitle1" sx={{ fontWeight: 600, color: '#374151', mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+                           🍔 Alimentos y Bebidas
+                           <Typography component="span" sx={{ fontSize: '12px', color: '#6B7280', fontWeight: 400 }}>
+                             (Subtotal: {formatCurrency(sale.food.subtotal || 0)})
+                           </Typography>
+                         </Typography>
+                         <TableContainer>
+                           <Table size="small">
+                             <TableHead>
+                               <TableRow sx={{ bgcolor: '#F8FAFC' }}>
+                                 <TableCell sx={{ fontSize: '12px', fontWeight: 600 }}>Producto</TableCell>
+                                 <TableCell sx={{ fontSize: '12px', fontWeight: 600, textAlign: 'center' }}>Cantidad</TableCell>
+                                 <TableCell sx={{ fontSize: '12px', fontWeight: 600, textAlign: 'center' }}>Precio Unit.</TableCell>
+                                 <TableCell sx={{ fontSize: '12px', fontWeight: 600, textAlign: 'center' }}>Subtotal</TableCell>
+                               </TableRow>
+                             </TableHead>
+                             <TableBody>
+                               {sale.food.items.map((food, foodIndex) => (
+                                 <TableRow key={foodIndex}>
+                                   <TableCell sx={{ fontSize: '12px' }}>{food.nombre}</TableCell>
+                                   <TableCell sx={{ fontSize: '12px', textAlign: 'center' }}>{food.cantidad}</TableCell>
+                                   <TableCell sx={{ fontSize: '12px', textAlign: 'center' }}>{formatCurrency(food.precio)}</TableCell>
+                                   <TableCell sx={{ fontSize: '12px', textAlign: 'center', fontWeight: 600, color: '#10B981' }}>
+                                     {formatCurrency(food.subtotal)}
+                                   </TableCell>
+                                 </TableRow>
+                               ))}
+                             </TableBody>
+                           </Table>
+                         </TableContainer>
+                       </Box>
+                     )}
+
+                     {/* Sección Actividades */}
+                     {sale.activities?.items && sale.activities.items.length > 0 && (
+                       <Box sx={{ mb: 3 }}>
+                         <Typography variant="subtitle1" sx={{ fontWeight: 600, color: '#374151', mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+                           🎯 Actividades
+                           <Typography component="span" sx={{ fontSize: '12px', color: '#6B7280', fontWeight: 400 }}>
+                             (Subtotal: {formatCurrency(sale.activities.subtotal || 0)})
+                           </Typography>
+                         </Typography>
+                         <TableContainer>
+                           <Table size="small">
+                             <TableHead>
+                               <TableRow sx={{ bgcolor: '#F8FAFC' }}>
+                                 <TableCell sx={{ fontSize: '12px', fontWeight: 600 }}>Actividad</TableCell>
+                                 <TableCell sx={{ fontSize: '12px', fontWeight: 600, textAlign: 'center' }}>Cantidad</TableCell>
+                                 <TableCell sx={{ fontSize: '12px', fontWeight: 600, textAlign: 'center' }}>Precio Unit.</TableCell>
+                                 <TableCell sx={{ fontSize: '12px', fontWeight: 600, textAlign: 'center' }}>Subtotal</TableCell>
+                               </TableRow>
+                             </TableHead>
+                             <TableBody>
+                               {sale.activities.items.map((activity, activityIndex) => (
+                                 <TableRow key={activityIndex}>
+                                   <TableCell sx={{ fontSize: '12px' }}>{activity.nombreActividad}</TableCell>
+                                   <TableCell sx={{ fontSize: '12px', textAlign: 'center' }}>{activity.cantidad}</TableCell>
+                                   <TableCell sx={{ fontSize: '12px', textAlign: 'center' }}>{formatCurrency(activity.precio)}</TableCell>
+                                   <TableCell sx={{ fontSize: '12px', textAlign: 'center', fontWeight: 600, color: '#10B981' }}>
+                                     {formatCurrency(activity.subtotal)}
+                                   </TableCell>
+                                 </TableRow>
+                               ))}
+                             </TableBody>
+                           </Table>
+                         </TableContainer>
+                       </Box>
+                     )}
+
+                     {/* Sección Asistentes */}
+                     {sale.attendees && sale.attendees.length > 0 && (
+                       <Box sx={{ mb: 3 }}>
+                         <Typography variant="subtitle1" sx={{ fontWeight: 600, color: '#374151', mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+                           👥 Asistentes
+                           <Typography component="span" sx={{ fontSize: '12px', color: '#6B7280', fontWeight: 400 }}>
+                             ({sale.attendees.length} persona{sale.attendees.length !== 1 ? 's' : ''})
+                           </Typography>
+                         </Typography>
+                         <TableContainer>
+                           <Table size="small">
+                             <TableHead>
+                               <TableRow sx={{ bgcolor: '#F8FAFC' }}>
+                                 <TableCell sx={{ fontSize: '12px', fontWeight: 600 }}>Nombre Completo</TableCell>
+                                 <TableCell sx={{ fontSize: '12px', fontWeight: 600 }}>RUT</TableCell>
+                                 <TableCell sx={{ fontSize: '12px', fontWeight: 600 }}>Email</TableCell>
+                                 <TableCell sx={{ fontSize: '12px', fontWeight: 600 }}>Teléfono</TableCell>
+                                 <TableCell sx={{ fontSize: '12px', fontWeight: 600, textAlign: 'center' }}>Tipo Entrada</TableCell>
+                               </TableRow>
+                             </TableHead>
+                             <TableBody>
+                               {sale.attendees.map((attendee, attendeeIndex) => (
+                                 <TableRow key={attendeeIndex}>
+                                   <TableCell sx={{ fontSize: '12px' }}>
+                                     <Typography variant="body2" sx={{ fontWeight: 500, color: '#374151' }}>
+                                       {attendee.datosPersonales?.nombreCompleto || 'N/A'}
+                                     </Typography>
+                                   </TableCell>
+                                   <TableCell sx={{ fontSize: '12px' }}>
+                                     {attendee.datosPersonales?.rut || 'N/A'}
+                                   </TableCell>
+                                   <TableCell sx={{ fontSize: '12px' }}>
+                                     <Typography variant="body2" sx={{ color: '#6B7280' }}>
+                                       {attendee.datosPersonales?.correo || 'N/A'}
+                                     </Typography>
+                                   </TableCell>
+                                   <TableCell sx={{ fontSize: '12px' }}>
+                                     {attendee.datosPersonales?.telefono || 'N/A'}
+                                   </TableCell>
+                                   <TableCell sx={{ fontSize: '12px', textAlign: 'center' }}>
+                                     <Box sx={{
+                                       display: 'inline-block',
+                                       px: 1.5,
+                                       py: 0.5,
+                                       borderRadius: '8px',
+                                       fontSize: '11px',
+                                       fontWeight: 500,
+                                       bgcolor: '#EBF8FF',
+                                       color: '#1E40AF'
+                                     }}>
+                                       {attendee.tipoEntrada || 'General'}
+                                     </Box>
+                                   </TableCell>
+                                 </TableRow>
+                               ))}
+                             </TableBody>
+                           </Table>
+                         </TableContainer>
+                       </Box>
+                     )}
+
+                     {/* Total de la Venta */}
+                     <Box sx={{ 
+                       bgcolor: '#F9FAFB', 
+                       p: 2, 
+                       borderRadius: '8px',
+                       border: '1px solid #E5E7EB'
+                     }}>
+                       <Stack direction="row" justifyContent="space-between" alignItems="center">
+                         <Typography variant="h6" sx={{ fontWeight: 700, color: '#374151' }}>
+                           Total de la Venta
+                         </Typography>
+                         <Typography variant="h5" sx={{ fontWeight: 700, color: '#10B981' }}>
+                           {formatCurrency(sale.totals?.total || 0)}
+                         </Typography>
+                       </Stack>
+                     </Box>
+
+                     </Box>
+                   )}
+                   </Box>
+                 );
+               })}
+               
+               {/* Botón Cargar Más */}
+               {salesHasMore && (
+                 <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3, mb: 2 }}>
+                   <Button
+                     onClick={loadMoreSales}
+                     disabled={salesLoading}
+                     variant="outlined"
+                     sx={{
+                       borderColor: '#3B82F6',
+                       color: '#3B82F6',
+                       '&:hover': {
+                         borderColor: '#2563EB',
+                         bgcolor: '#EBF8FF'
+                       },
+                       textTransform: 'none',
+                       fontWeight: 500,
+                       px: 4,
+                       py: 1
+                     }}
+                   >
+                     {salesLoading ? 'Cargando...' : `Cargar más registros (${salesData.length} de ${salesTotal})`}
+                   </Button>
+                 </Box>
+               )}
+             </Box>
            )}
          </DialogContent>
          
          <DialogActions sx={{ p: 2, bgcolor: '#F9FAFB', borderTop: '1px solid #E5E7EB' }}>
            <Typography variant="body2" sx={{ color: '#6B7280', mr: 'auto' }}>
-             Total de registros: {salesData.length}
+             Mostrando {salesData.length} de {salesTotal} registros
+             {salesHasMore && (
+               <Typography component="span" sx={{ color: '#3B82F6', ml: 1 }}>
+                 • Página {salesPage}
+               </Typography>
+             )}
            </Typography>
            <Button 
              onClick={() => setShowSalesModal(false)}
