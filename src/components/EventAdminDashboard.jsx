@@ -79,7 +79,13 @@ import {
   Button,
   Paper,
   Tabs,
-  Tab
+  Tab,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow
 } from '@mui/material';
 import {
   Search as SearchIcon,
@@ -96,7 +102,8 @@ import {
   Description as DescriptionIcon,
   Person as PersonIcon,
   Share as ShareIcon,
-  Add as AddIcon
+  Add as AddIcon,
+  Visibility as VisibilityIcon
 } from '@mui/icons-material';
 import Usuarios from './Usuarios';
 import AddUserForm from './AddUserForm';
@@ -1079,6 +1086,66 @@ const EventAdminDashboard = () => {
     const [loading, setLoading] = useState(true);
     const [inventory, setInventory] = useState([]);
     const [showAllAgendables, setShowAllAgendables] = useState(false);
+    
+    // Estados para modal de ventas
+    const [showSalesModal, setShowSalesModal] = useState(false);
+    const [salesData, setSalesData] = useState([]);
+    const [salesLoading, setSalesLoading] = useState(false);
+
+    // Función para obtener las ventas del evento
+    const fetchSalesData = async () => {
+      if (!selectedEventId) {
+        console.log('🚫 DEBUG: No selectedEventId, aborting fetchSalesData');
+        return;
+      }
+      
+      console.log('🚀 DEBUG: Starting fetchSalesData for eventId:', selectedEventId);
+      
+      try {
+        setSalesLoading(true);
+        const url = API_CONFIG.ENDPOINTS.SALES_BY_EVENT(selectedEventId);
+        console.log('📡 DEBUG: Fetching URL:', url);
+        
+        const response = await fetch(url, API_CONFIG.REQUEST_CONFIG);
+        console.log('📥 DEBUG: Response status:', response.status);
+        console.log('📥 DEBUG: Response ok:', response.ok);
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const salesResult = await response.json();
+        console.log('📊 DEBUG: Raw API response:', salesResult);
+        console.log('📊 DEBUG: Response type:', typeof salesResult);
+        console.log('📊 DEBUG: Response keys:', Object.keys(salesResult || {}));
+        
+        // Manejar diferentes estructuras de respuesta
+        const sales = salesResult.data?.sales || salesResult.data || salesResult.sales || salesResult || [];
+        console.log('🔍 DEBUG: Extracted sales:', sales);
+        console.log('🔍 DEBUG: Sales is array:', Array.isArray(sales));
+        console.log('🔍 DEBUG: Sales length:', Array.isArray(sales) ? sales.length : 'N/A');
+        
+        const finalSales = Array.isArray(sales) ? sales : [];
+        console.log('✅ DEBUG: Final sales data:', finalSales);
+        setSalesData(finalSales);
+      } catch (error) {
+        console.error('❌ DEBUG: Error fetching sales data:', error);
+        console.error('❌ DEBUG: Error message:', error.message);
+        setSalesData([]);
+      } finally {
+        setSalesLoading(false);
+        console.log('🏁 DEBUG: fetchSalesData completed');
+      }
+    };
+
+    // Función para abrir modal de ventas
+    const handleOpenSalesModal = () => {
+      console.log('🎯 DEBUG: Opening sales modal for event:', selectedEventId);
+      console.log('🎯 DEBUG: Selected event object:', selectedEvent);
+      console.log('🎯 DEBUG: Event name:', selectedEvent?.informacionGeneral?.nombreEvento);
+      setShowSalesModal(true);
+      fetchSalesData();
+    };
 
     // Removed automatic time updates to prevent API spam
 
@@ -1337,12 +1404,22 @@ const EventAdminDashboard = () => {
           </Paper>
 
 
-          <Paper sx={{ 
-            flex: 1, 
-            p: 3, 
-            borderRadius: '12px',
-            boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.1)'
-          }}>
+          <Paper 
+            onClick={handleOpenSalesModal}
+            sx={{ 
+              flex: 1, 
+              p: 3, 
+              borderRadius: '12px',
+              boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.1)',
+              cursor: 'pointer',
+              transition: 'all 0.2s ease-in-out',
+              '&:hover': {
+                boxShadow: '0px 4px 16px rgba(0, 0, 0, 0.15)',
+                transform: 'translateY(-2px)',
+                bgcolor: '#F8FAFC'
+              }
+            }}
+          >
             <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
               <Box>
                 <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1 }}>
@@ -1353,6 +1430,22 @@ const EventAdminDashboard = () => {
                 </Stack>
                 <Typography variant="h4" sx={{ color: '#374151', fontWeight: 700 }}>
                   {cardValues.ticketsVendidos}
+                </Typography>
+              </Box>
+              <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.5 }}>
+                <VisibilityIcon sx={{ 
+                  color: '#6B7280', 
+                  fontSize: '20px',
+                  transition: 'color 0.2s ease-in-out',
+                  '&:hover': { color: '#3B82F6' }
+                }} />
+                <Typography variant="caption" sx={{ 
+                  color: '#6B7280', 
+                  fontSize: '10px',
+                  textAlign: 'center',
+                  lineHeight: 1
+                }}>
+                  Ver registros
                 </Typography>
               </Box>
             </Stack>
@@ -2027,6 +2120,179 @@ const EventAdminDashboard = () => {
              </Button>
            </Paper>
          </Box>
+
+         {/* Modal de Ventas de Tickets */}
+       <Dialog 
+         open={showSalesModal} 
+         onClose={() => setShowSalesModal(false)}
+         maxWidth="lg"
+         fullWidth
+       >
+         <DialogTitle sx={{ 
+           bgcolor: '#F9FAFB', 
+           borderBottom: '1px solid #E5E7EB',
+           display: 'flex',
+           alignItems: 'center',
+           gap: 1
+         }}>
+           <PersonIcon sx={{ color: '#3B82F6' }} />
+           <Typography component="span" variant="h6" sx={{ fontWeight: 600, color: '#374151' }}>
+             Registros de Tickets Vendidos
+           </Typography>
+           {selectedEvent && (
+             <Typography component="span" variant="body2" sx={{ color: '#6B7280', ml: 'auto' }}>
+               {selectedEvent.informacionGeneral?.nombreEvento}
+             </Typography>
+           )}
+         </DialogTitle>
+         
+         <DialogContent sx={{ p: 0 }}>
+           {salesLoading ? (
+             <Box sx={{ 
+               display: 'flex', 
+               justifyContent: 'center', 
+               alignItems: 'center', 
+               minHeight: 200,
+               flexDirection: 'column',
+               gap: 2
+             }}>
+               <Box sx={{ 
+                 width: 40, 
+                 height: 40, 
+                 border: '3px solid #E5E7EB',
+                 borderTop: '3px solid #3B82F6',
+                 borderRadius: '50%',
+                 animation: 'spin 1s linear infinite',
+                 '@keyframes spin': {
+                   '0%': { transform: 'rotate(0deg)' },
+                   '100%': { transform: 'rotate(360deg)' }
+                 }
+               }} />
+               <Typography variant="body2" sx={{ color: '#6B7280' }}>
+                 Cargando registros de ventas...
+               </Typography>
+             </Box>
+           ) : salesData.length === 0 ? (
+             <Box sx={{ 
+               display: 'flex', 
+               justifyContent: 'center', 
+               alignItems: 'center', 
+               minHeight: 200,
+               flexDirection: 'column',
+               gap: 1
+             }}>
+               <PersonIcon sx={{ fontSize: 48, color: '#D1D5DB' }} />
+               <Typography variant="h6" sx={{ color: '#6B7280', fontWeight: 500 }}>
+                 No hay registros de ventas
+               </Typography>
+               <Typography variant="body2" sx={{ color: '#9CA3AF' }}>
+                 Aún no se han registrado ventas de tickets para este evento
+               </Typography>
+             </Box>
+           ) : (
+             <TableContainer>
+               <Table>
+                 <TableHead>
+                   <TableRow sx={{ bgcolor: '#F9FAFB' }}>
+                     <TableCell sx={{ fontWeight: 600, color: '#374151' }}>Fecha</TableCell>
+                     <TableCell sx={{ fontWeight: 600, color: '#374151' }}>Cliente</TableCell>
+                     <TableCell sx={{ fontWeight: 600, color: '#374151' }}>Tipo Entrada</TableCell>
+                     <TableCell sx={{ fontWeight: 600, color: '#374151', textAlign: 'center' }}>Cantidad</TableCell>
+                     <TableCell sx={{ fontWeight: 600, color: '#374151', textAlign: 'center' }}>Precio Unit.</TableCell>
+                     <TableCell sx={{ fontWeight: 600, color: '#374151', textAlign: 'center' }}>Total</TableCell>
+                     <TableCell sx={{ fontWeight: 600, color: '#374151', textAlign: 'center' }}>Estado</TableCell>
+                   </TableRow>
+                 </TableHead>
+                 <TableBody>
+                   {salesData.map((sale, index) => (
+                     <TableRow 
+                       key={index}
+                       sx={{ 
+                         '&:hover': { bgcolor: '#F9FAFB' },
+                         '&:nth-of-type(even)': { bgcolor: '#FAFBFC' }
+                       }}
+                     >
+                       <TableCell sx={{ fontSize: '14px' }}>
+                         {sale.createdAt ? new Date(sale.createdAt).toLocaleDateString('es-CL') : 
+                          sale.timestamp ? new Date(sale.timestamp).toLocaleDateString('es-CL') : 
+                          sale.fecha ? new Date(sale.fecha).toLocaleDateString('es-CL') : '-'}
+                       </TableCell>
+                       <TableCell sx={{ fontSize: '14px' }}>
+                         <Box>
+                           <Typography variant="body2" sx={{ fontWeight: 500, color: '#374151' }}>
+                             {sale.attendees?.[0]?.datosPersonales?.nombreCompleto || 
+                              sale.cliente?.nombre || 
+                              sale.nombreCliente || 'Cliente'}
+                           </Typography>
+                           <Typography variant="caption" sx={{ color: '#6B7280' }}>
+                             {sale.attendees?.[0]?.datosPersonales?.correo || 
+                              sale.cliente?.email || 
+                              sale.emailCliente || ''}
+                           </Typography>
+                         </Box>
+                       </TableCell>
+                       <TableCell sx={{ fontSize: '14px' }}>
+                         {sale.tickets?.items?.[0]?.tipoEntrada || 
+                          sale.tipoEntrada || 
+                          sale.entrada?.tipo || 'General'}
+                       </TableCell>
+                       <TableCell sx={{ fontSize: '14px', textAlign: 'center' }}>
+                         {sale.tickets?.items?.[0]?.cantidad || 
+                          sale.cantidad || 
+                          sale.cantidadTickets || 1}
+                       </TableCell>
+                       <TableCell sx={{ fontSize: '14px', textAlign: 'center' }}>
+                         {formatCurrency(sale.tickets?.items?.[0]?.precio || 
+                                        sale.precioUnitario || 
+                                        sale.precio || 0)}
+                       </TableCell>
+                       <TableCell sx={{ fontSize: '14px', textAlign: 'center', fontWeight: 600, color: '#10B981' }}>
+                         {formatCurrency(sale.totals?.subtotalTickets || 
+                                        sale.tickets?.subtotal || 
+                                        sale.total || 
+                                        (sale.cantidad || 1) * (sale.precioUnitario || sale.precio || 0))}
+                       </TableCell>
+                       <TableCell sx={{ textAlign: 'center' }}>
+                         <Box sx={{
+                           display: 'inline-block',
+                           px: 2,
+                           py: 0.5,
+                           borderRadius: '12px',
+                           fontSize: '12px',
+                           fontWeight: 500,
+                           bgcolor: (sale.status || 'completed').toLowerCase() === 'completed' ? '#DCFCE7' : '#FEF3C7',
+                           color: (sale.status || 'completed').toLowerCase() === 'completed' ? '#166534' : '#92400E'
+                         }}>
+                           {(sale.status || 'completed') === 'completed' ? 'Pagado' : 
+                            (sale.status || 'Pagado').charAt(0).toUpperCase() + (sale.status || 'Pagado').slice(1)}
+                         </Box>
+                       </TableCell>
+                     </TableRow>
+                   ))}
+                 </TableBody>
+               </Table>
+             </TableContainer>
+           )}
+         </DialogContent>
+         
+         <DialogActions sx={{ p: 2, bgcolor: '#F9FAFB', borderTop: '1px solid #E5E7EB' }}>
+           <Typography variant="body2" sx={{ color: '#6B7280', mr: 'auto' }}>
+             Total de registros: {salesData.length}
+           </Typography>
+           <Button 
+             onClick={() => setShowSalesModal(false)}
+             variant="contained"
+             sx={{
+               bgcolor: '#3B82F6',
+               '&:hover': { bgcolor: '#2563EB' },
+               textTransform: 'none',
+               fontWeight: 500
+             }}
+           >
+             Cerrar
+           </Button>
+         </DialogActions>
+       </Dialog>
        </Box>
      );
    };

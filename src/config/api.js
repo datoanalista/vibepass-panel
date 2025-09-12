@@ -34,6 +34,10 @@ const API_CONFIG = {
     INVENTORY: process.env.NEXT_PUBLIC_API_INVENTORY_URL || `${BASE_URL}/api/inventory`,
     INVENTORY_BY_ID: (id) => `${BASE_URL}/api/inventory/${id}`,
     
+    // Ventas
+    SALES: process.env.NEXT_PUBLIC_API_SALES_URL || `${BASE_URL}/api/sales`,
+    SALES_BY_EVENT: (eventId) => `${BASE_URL}/api/sales/event/${eventId}`,
+    
     // Uploads
     UPLOAD_BANNER: process.env.NEXT_PUBLIC_API_UPLOAD_BANNER_URL || `${BASE_URL}/api/upload/banner`,
     UPLOAD_PRODUCTS: process.env.NEXT_PUBLIC_API_UPLOAD_PRODUCTS_URL || `${BASE_URL}/api/upload/products`,
