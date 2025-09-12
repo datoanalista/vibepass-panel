@@ -1061,7 +1061,7 @@ const EventAdminDashboard = () => {
          const [dashboardData, setDashboardData] = useState({
       totalVentas: 0,
       ventasDelDia: 0,
-      registradosNuevos: 0,
+      ticketsVendidos: 0,
       ventasDetalle: [],
       eventoActivo: 'programado'
     });
@@ -1094,11 +1094,54 @@ const EventAdminDashboard = () => {
         const inventoryArray = Array.isArray(inventoryData) ? inventoryData : (inventoryData.data?.items || inventoryData.inventory || inventoryData.data || []);
         setInventory(inventoryArray);
         
-        const registradosNuevos = users.length;
+        // Calcular tickets vendidos desde el evento seleccionado
+        let ticketsVendidos = 0;
+        if (selectedEvent && selectedEvent.entradas) {
+          ticketsVendidos = selectedEvent.entradas.reduce((total, entrada) => {
+            return total + (entrada.entradasVendidas || 0);
+          }, 0);
+        }
         
-        const totalVentas = inventoryArray.reduce((total, item) => {
-          return total + (item.precioVenta * (item.stockInicial - item.stockActual));
-        }, 0);
+        // Calcular total de ventas usando los campos del evento seleccionado
+        let totalVentas = 0;
+        
+        if (selectedEvent) {
+          // 1. Entradas: precio * entradasVendidas
+          const entradas = selectedEvent.entradas || [];
+          const ventasEntradas = entradas.reduce((total, entrada) => {
+            const precio = entrada.precio || 0;
+            const vendidas = entrada.entradasVendidas || 0;
+            return total + (precio * vendidas);
+          }, 0);
+          
+          // 2. Alimentos y Bebidas: precioUnitario * (stockAsignado - stockActual)
+          const alimentosBebestibles = selectedEvent.alimentosBebestibles || [];
+          const ventasAlimentos = alimentosBebestibles.reduce((total, item) => {
+            const precioUnitario = item.precioUnitario || 0;
+            const stockAsignado = item.stockAsignado || 0;
+            const stockActual = item.stockActual || 0;
+            const vendidos = stockAsignado - stockActual;
+            return total + (precioUnitario * vendidos);
+          }, 0);
+          
+          // 3. Actividades: precioUnitario * cuposOcupados
+          const actividades = selectedEvent.actividades || [];
+          const ventasActividades = actividades.reduce((total, actividad) => {
+            const precioUnitario = actividad.precioUnitario || 0;
+            const cuposOcupados = actividad.cuposOcupados || 0;
+            return total + (precioUnitario * cuposOcupados);
+          }, 0);
+          
+          totalVentas = ventasEntradas + ventasAlimentos + ventasActividades;
+          
+          // Log para debug
+          console.log('💰 Cálculo de ventas:', {
+            ventasEntradas,
+            ventasAlimentos,
+            ventasActividades,
+            totalVentas
+          });
+        }
         
         const ventasDelDia = Math.floor(totalVentas * 0.9);
         
@@ -1126,7 +1169,7 @@ const EventAdminDashboard = () => {
          setDashboardData({
            totalVentas,
            ventasDelDia,
-           registradosNuevos,
+           ticketsVendidos,
            ventasDetalle: ventasDetalleArray,
            eventoActivo: eventStatus.status,
            eventStatus: eventStatus
@@ -1136,7 +1179,7 @@ const EventAdminDashboard = () => {
                  setDashboardData({
            totalVentas: 0,
            ventasDelDia: 0,
-           registradosNuevos: 0,
+           ticketsVendidos: 0,
            ventasDetalle: [],
            eventoActivo: 'programado',
            eventStatus: { status: 'programado', message: 'Evento programado', color: '#3B82F6' }
@@ -1265,11 +1308,11 @@ const EventAdminDashboard = () => {
                 <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1 }}>
                   <PersonIcon sx={{ color: '#6B7280', fontSize: '20px' }} />
                   <Typography variant="body2" sx={{ color: '#6B7280' }}>
-                    Usuarios registrados
+                    Tickets vendidos
                   </Typography>
                 </Stack>
                 <Typography variant="h4" sx={{ color: '#374151', fontWeight: 700 }}>
-                  {dashboardData.registradosNuevos}
+                  {dashboardData.ticketsVendidos}
                 </Typography>
               </Box>
             </Stack>
@@ -1281,61 +1324,431 @@ const EventAdminDashboard = () => {
 
            <Box sx={{ display: 'flex', flexDirection: 'column' }}>
              <Typography variant="h6" sx={{ color: '#374151', mb: 2, fontWeight: 600 }}>
-               Ventas del día
+               Detalle ventas
              </Typography>
              <Paper sx={{ 
                width: 800,
-               height: 320,
+               minHeight: 320,
                p: 3, 
                borderRadius: '12px',
                boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.1)',
                display: 'flex',
-               flexDirection: 'column',
-               justifyContent: 'space-between'
+               flexDirection: 'column'
              }}>
-               {dashboardData.ventasDetalle.length > 0 ? (
-                 <Stack spacing={2}>
-                   {dashboardData.ventasDetalle.map((item, index) => (
-                     <Stack key={index} direction="row" justifyContent="space-between" alignItems="center">
-                       <Typography variant="body1" sx={{ color: '#374151' }}>
-                         {item.categoria}
-                       </Typography>
-                       <Typography variant="body1" sx={{ color: '#374151', fontWeight: 600 }}>
-                         {formatCurrency(item.monto)}
-                       </Typography>
-                     </Stack>
-                   ))}
-                 </Stack>
-               ) : (
-                 <Box sx={{ 
-                   display: 'flex', 
-                   flexDirection: 'column',
-                   alignItems: 'center', 
-                   justifyContent: 'center',
-                   flex: 1,
-                   py: 4
-                 }}>
-                   <Typography variant="h6" sx={{ color: '#6B7280', mb: 1, fontWeight: 500 }}>
-                     📊 No hay ventas aún
-                   </Typography>
-                   <Typography variant="body2" sx={{ color: '#9CA3AF', textAlign: 'center' }}>
-                     Las ventas del día aparecerán aquí cuando se registren transacciones
+               {/* Sección Tickets */}
+               <Box sx={{ mb: 4 }}>
+                 <Box sx={{ mb: 2 }}>
+                   <Typography variant="h6" sx={{ color: '#374151', fontWeight: 600, fontSize: '16px' }}>
+                     🎫 Tickets
                    </Typography>
                  </Box>
-               )}
-               {dashboardData.ventasDetalle.length > 0 && (
-                 <Button 
-                   variant="text" 
-                   endIcon={<KeyboardArrowDownIcon />}
-                   sx={{ 
-                     color: '#6B7280',
-                     textTransform: 'none',
-                     alignSelf: 'center'
-                   }}
-                 >
-                   Ver todas las ventas del día
-                 </Button>
-               )}
+                 
+                 {selectedEvent?.entradas && selectedEvent.entradas.length > 0 ? (
+                   <Box sx={{ 
+                     border: '1px solid #E5E7EB',
+                     borderRadius: '8px',
+                     overflow: 'hidden'
+                   }}>
+                     {/* Header */}
+                     <Box sx={{ 
+                       display: 'grid', 
+                       gridTemplateColumns: '1.2fr 1fr 0.8fr 0.8fr 0.8fr 0.8fr 0.9fr',
+                       gap: 1,
+                       bgcolor: '#F9FAFB',
+                       p: 2,
+                       borderBottom: '1px solid #E5E7EB'
+                     }}>
+                       <Typography variant="body2" sx={{ fontWeight: 600, color: '#6B7280', fontSize: '11px' }}>Evento</Typography>
+                       <Typography variant="body2" sx={{ fontWeight: 600, color: '#6B7280', fontSize: '11px', textAlign: 'center' }}>Tipo entrada</Typography>
+                       <Typography variant="body2" sx={{ fontWeight: 600, color: '#6B7280', fontSize: '11px', textAlign: 'center' }}>Total Tickets</Typography>
+                       <Typography variant="body2" sx={{ fontWeight: 600, color: '#6B7280', fontSize: '11px', textAlign: 'center' }}>Vendidos</Typography>
+                       <Typography variant="body2" sx={{ fontWeight: 600, color: '#6B7280', fontSize: '11px', textAlign: 'center' }}>Disponibles</Typography>
+                       <Typography variant="body2" sx={{ fontWeight: 600, color: '#6B7280', fontSize: '11px', textAlign: 'center' }}>Valor</Typography>
+                       <Typography variant="body2" sx={{ fontWeight: 600, color: '#6B7280', fontSize: '11px', textAlign: 'center' }}>Total venta</Typography>
+                     </Box>
+                     
+                     {/* Rows */}
+                     {selectedEvent.entradas.map((entrada, index) => {
+                       const cuposDisponibles = entrada.cuposDisponibles || 0;
+                       const entradasVendidas = entrada.entradasVendidas || 0;
+                       const disponibles = cuposDisponibles - entradasVendidas;
+                       const precio = entrada.precio || 0;
+                       const totalVenta = precio * entradasVendidas;
+                       
+                       // Función para enmascarar tipos de entrada
+                       const getTipoEntradaDisplay = (tipoOriginal) => {
+                         const tipo = (tipoOriginal || '').toLowerCase();
+                         if (tipo.includes('general')) return 'General';
+                         if (tipo.includes('vip')) return 'VIP';
+                         if (tipo.includes('estudiante')) return 'Estudiante';
+                         if (tipo.includes('tercera') || tipo.includes('edad') || tipo.includes('adulto')) return 'Tercera Edad';
+                         if (tipo.includes('profesor') || tipo.includes('docente')) return 'Profesores';
+                         return 'General'; // Default
+                       };
+                       
+                       return (
+                         <Box key={index} sx={{ 
+                           display: 'grid', 
+                           gridTemplateColumns: '1.2fr 1fr 0.8fr 0.8fr 0.8fr 0.8fr 0.9fr',
+                           gap: 1,
+                           p: 2,
+                           borderBottom: index < selectedEvent.entradas.length - 1 ? '1px solid #F3F4F6' : 'none',
+                           '&:hover': { bgcolor: '#F9FAFB' }
+                         }}>
+                           <Typography variant="body2" sx={{ fontSize: '12px', color: '#374151' }}>
+                             {selectedEvent.informacionGeneral?.nombreEvento || 'Evento'}
+                           </Typography>
+                           <Typography variant="body2" sx={{ fontSize: '12px', color: '#374151', textAlign: 'center' }}>
+                             {getTipoEntradaDisplay(entrada.tipoEntrada)}
+                           </Typography>
+                           <Typography variant="body2" sx={{ fontSize: '12px', color: '#374151', textAlign: 'center' }}>
+                             {cuposDisponibles.toLocaleString()}
+                           </Typography>
+                           <Typography variant="body2" sx={{ fontSize: '12px', color: '#10B981', fontWeight: 600, textAlign: 'center' }}>
+                             {entradasVendidas.toLocaleString()}
+                           </Typography>
+                           <Typography variant="body2" sx={{ fontSize: '12px', color: '#6B7280', textAlign: 'center' }}>
+                             {disponibles.toLocaleString()}
+                           </Typography>
+                           <Typography variant="body2" sx={{ fontSize: '12px', color: '#374151', textAlign: 'center' }}>
+                             {formatCurrency(precio)}
+                           </Typography>
+                           <Typography variant="body2" sx={{ fontSize: '12px', color: '#10B981', fontWeight: 600, textAlign: 'center' }}>
+                             {formatCurrency(totalVenta)}
+                           </Typography>
+                         </Box>
+                       );
+                     })}
+                     
+                     {/* Fila de Resumen */}
+                     <Box sx={{ 
+                       display: 'grid', 
+                       gridTemplateColumns: '1.2fr 1fr 0.8fr 0.8fr 0.8fr 0.8fr 0.9fr',
+                       gap: 1,
+                       p: 2,
+                       borderTop: '2px solid #E5E7EB',
+                       bgcolor: '#F9FAFB',
+                       fontWeight: 600
+                     }}>
+                       <Typography variant="body2" sx={{ fontSize: '12px', color: '#374151', fontWeight: 700 }}>
+                         Resumen
+                       </Typography>
+                       <Typography variant="body2" sx={{ fontSize: '12px', color: '#6B7280', textAlign: 'center' }}>
+                         -
+                       </Typography>
+                       <Typography variant="body2" sx={{ fontSize: '12px', color: '#374151', fontWeight: 700, textAlign: 'center' }}>
+                         {(() => {
+                           const totalTickets = selectedEvent.entradas.reduce((total, entrada) => {
+                             return total + (entrada.cuposDisponibles || 0);
+                           }, 0);
+                           return totalTickets.toLocaleString();
+                         })()}
+                       </Typography>
+                       <Typography variant="body2" sx={{ fontSize: '12px', color: '#10B981', fontWeight: 700, textAlign: 'center' }}>
+                         {(() => {
+                           const totalVendidos = selectedEvent.entradas.reduce((total, entrada) => {
+                             return total + (entrada.entradasVendidas || 0);
+                           }, 0);
+                           return totalVendidos.toLocaleString();
+                         })()}
+                       </Typography>
+                       <Typography variant="body2" sx={{ fontSize: '12px', color: '#6B7280', fontWeight: 700, textAlign: 'center' }}>
+                         {(() => {
+                           const totalDisponibles = selectedEvent.entradas.reduce((total, entrada) => {
+                             const disponibles = (entrada.cuposDisponibles || 0) - (entrada.entradasVendidas || 0);
+                             return total + disponibles;
+                           }, 0);
+                           return totalDisponibles.toLocaleString();
+                         })()}
+                       </Typography>
+                       <Typography variant="body2" sx={{ fontSize: '12px', color: '#6B7280', textAlign: 'center' }}>
+                         -
+                       </Typography>
+                       <Typography variant="body2" sx={{ fontSize: '12px', color: '#10B981', fontWeight: 700, textAlign: 'center' }}>
+                         {(() => {
+                           const totalVentas = selectedEvent.entradas.reduce((total, entrada) => {
+                             return total + ((entrada.precio || 0) * (entrada.entradasVendidas || 0));
+                           }, 0);
+                           return formatCurrency(totalVentas);
+                         })()}
+                       </Typography>
+                     </Box>
+                   </Box>
+                 ) : (
+                   <Box sx={{ 
+                     p: 3, 
+                     textAlign: 'center',
+                     border: '1px solid #E5E7EB',
+                     borderRadius: '8px',
+                     bgcolor: '#F9FAFB'
+                   }}>
+                     <Typography variant="body2" sx={{ color: '#6B7280' }}>
+                       No hay información de tickets disponible
+                     </Typography>
+                   </Box>
+                 )}
+               </Box>
+
+               {/* Sección Alimentos y Bebidas */}
+               <Box sx={{ mb: 4 }}>
+                 <Box sx={{ mb: 2 }}>
+                   <Typography variant="h6" sx={{ color: '#374151', fontWeight: 600, fontSize: '16px' }}>
+                     🍔 Alimentos y Bebidas
+                   </Typography>
+                 </Box>
+                 
+                 {selectedEvent?.alimentosBebestibles && selectedEvent.alimentosBebestibles.length > 0 ? (
+                   <Box sx={{ 
+                     border: '1px solid #E5E7EB',
+                     borderRadius: '8px',
+                     overflow: 'hidden'
+                   }}>
+                     {/* Header */}
+                     <Box sx={{ 
+                       display: 'grid', 
+                       gridTemplateColumns: '2fr 1fr 1fr 1fr 1.2fr',
+                       gap: 1,
+                       bgcolor: '#F9FAFB',
+                       p: 2,
+                       borderBottom: '1px solid #E5E7EB'
+                     }}>
+                       <Typography variant="body2" sx={{ fontWeight: 600, color: '#6B7280', fontSize: '11px' }}>Nombre</Typography>
+                       <Typography variant="body2" sx={{ fontWeight: 600, color: '#6B7280', fontSize: '11px', textAlign: 'center' }}>Precio</Typography>
+                       <Typography variant="body2" sx={{ fontWeight: 600, color: '#6B7280', fontSize: '11px', textAlign: 'center' }}>Stock total</Typography>
+                       <Typography variant="body2" sx={{ fontWeight: 600, color: '#6B7280', fontSize: '11px', textAlign: 'center' }}>Vendidos</Typography>
+                       <Typography variant="body2" sx={{ fontWeight: 600, color: '#6B7280', fontSize: '11px', textAlign: 'center' }}>Total ventas</Typography>
+                     </Box>
+                     
+                     {/* Rows */}
+                     {selectedEvent.alimentosBebestibles.map((item, index) => {
+                       const precioUnitario = item.precioUnitario || 0;
+                       const stockAsignado = item.stockAsignado || 0;
+                       const stockActual = item.stockActual || 0;
+                       const vendidos = stockAsignado - stockActual;
+                       const totalVentas = precioUnitario * vendidos;
+                       
+                       return (
+                         <Box key={index} sx={{ 
+                           display: 'grid', 
+                           gridTemplateColumns: '2fr 1fr 1fr 1fr 1.2fr',
+                           gap: 1,
+                           p: 2,
+                           borderBottom: index < selectedEvent.alimentosBebestibles.length - 1 ? '1px solid #F3F4F6' : 'none',
+                           '&:hover': { bgcolor: '#F9FAFB' }
+                         }}>
+                           <Typography variant="body2" sx={{ fontSize: '12px', color: '#374151' }}>
+                             {item.nombre || item.nombreProducto || 'Producto'}
+                           </Typography>
+                           <Typography variant="body2" sx={{ fontSize: '12px', color: '#374151', textAlign: 'center' }}>
+                             {formatCurrency(precioUnitario)}
+                           </Typography>
+                           <Typography variant="body2" sx={{ fontSize: '12px', color: '#374151', textAlign: 'center' }}>
+                             {stockAsignado.toLocaleString()}
+                           </Typography>
+                           <Typography variant="body2" sx={{ fontSize: '12px', color: '#10B981', fontWeight: 600, textAlign: 'center' }}>
+                             {vendidos.toLocaleString()}
+                           </Typography>
+                           <Typography variant="body2" sx={{ fontSize: '12px', color: '#10B981', fontWeight: 600, textAlign: 'center' }}>
+                             {formatCurrency(totalVentas)}
+                           </Typography>
+                         </Box>
+                       );
+                     })}
+                     
+                     {/* Fila de Resumen */}
+                     <Box sx={{ 
+                       display: 'grid', 
+                       gridTemplateColumns: '2fr 1fr 1fr 1fr 1.2fr',
+                       gap: 1,
+                       p: 2,
+                       borderTop: '2px solid #E5E7EB',
+                       bgcolor: '#F9FAFB',
+                       fontWeight: 600
+                     }}>
+                       <Typography variant="body2" sx={{ fontSize: '12px', color: '#374151', fontWeight: 700 }}>
+                         Resumen
+                       </Typography>
+                       <Typography variant="body2" sx={{ fontSize: '12px', color: '#6B7280', textAlign: 'center' }}>
+                         -
+                       </Typography>
+                       <Typography variant="body2" sx={{ fontSize: '12px', color: '#374151', fontWeight: 700, textAlign: 'center' }}>
+                         {(() => {
+                           const totalStock = selectedEvent.alimentosBebestibles.reduce((total, item) => {
+                             return total + (item.stockAsignado || 0);
+                           }, 0);
+                           return totalStock.toLocaleString();
+                         })()}
+                       </Typography>
+                       <Typography variant="body2" sx={{ fontSize: '12px', color: '#10B981', fontWeight: 700, textAlign: 'center' }}>
+                         {(() => {
+                           const totalVendidos = selectedEvent.alimentosBebestibles.reduce((total, item) => {
+                             const vendidos = (item.stockAsignado || 0) - (item.stockActual || 0);
+                             return total + vendidos;
+                           }, 0);
+                           return totalVendidos.toLocaleString();
+                         })()}
+                       </Typography>
+                       <Typography variant="body2" sx={{ fontSize: '12px', color: '#10B981', fontWeight: 700, textAlign: 'center' }}>
+                         {(() => {
+                           const totalVentas = selectedEvent.alimentosBebestibles.reduce((total, item) => {
+                             const vendidos = (item.stockAsignado || 0) - (item.stockActual || 0);
+                             return total + ((item.precioUnitario || 0) * vendidos);
+                           }, 0);
+                           return formatCurrency(totalVentas);
+                         })()}
+                       </Typography>
+                     </Box>
+                   </Box>
+                 ) : (
+                   <Box sx={{ 
+                     p: 3, 
+                     textAlign: 'center',
+                     border: '1px solid #E5E7EB',
+                     borderRadius: '8px',
+                     bgcolor: '#F9FAFB'
+                   }}>
+                     <Typography variant="body2" sx={{ color: '#6B7280' }}>
+                       No hay información de alimentos y bebidas disponible
+                     </Typography>
+                   </Box>
+                 )}
+               </Box>
+
+               {/* Sección Actividades */}
+               <Box>
+                 <Box sx={{ mb: 2 }}>
+                   <Typography variant="h6" sx={{ color: '#374151', fontWeight: 600, fontSize: '16px' }}>
+                     🎯 Actividades
+                   </Typography>
+                 </Box>
+                 
+                 {selectedEvent?.actividades && selectedEvent.actividades.length > 0 ? (
+                   <Box sx={{ 
+                     border: '1px solid #E5E7EB',
+                     borderRadius: '8px',
+                     overflow: 'hidden'
+                   }}>
+                     {/* Header */}
+                     <Box sx={{ 
+                       display: 'grid', 
+                       gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr 1.2fr',
+                       gap: 1,
+                       bgcolor: '#F9FAFB',
+                       p: 2,
+                       borderBottom: '1px solid #E5E7EB'
+                     }}>
+                       <Typography variant="body2" sx={{ fontWeight: 600, color: '#6B7280', fontSize: '11px' }}>Nombre Actividad</Typography>
+                       <Typography variant="body2" sx={{ fontWeight: 600, color: '#6B7280', fontSize: '11px', textAlign: 'center' }}>Precio</Typography>
+                       <Typography variant="body2" sx={{ fontWeight: 600, color: '#6B7280', fontSize: '11px', textAlign: 'center' }}>Cupos Total</Typography>
+                       <Typography variant="body2" sx={{ fontWeight: 600, color: '#6B7280', fontSize: '11px', textAlign: 'center' }}>Vendidos</Typography>
+                       <Typography variant="body2" sx={{ fontWeight: 600, color: '#6B7280', fontSize: '11px', textAlign: 'center' }}>Disponibles</Typography>
+                       <Typography variant="body2" sx={{ fontWeight: 600, color: '#6B7280', fontSize: '11px', textAlign: 'center' }}>Total ventas</Typography>
+                     </Box>
+                     
+                     {/* Rows */}
+                     {selectedEvent.actividades.map((actividad, index) => {
+                       const precioUnitario = actividad.precioUnitario || 0;
+                       const cuposDisponibles = actividad.cuposDisponibles || 0;
+                       const cuposOcupados = actividad.cuposOcupados || 0;
+                       const disponibles = cuposDisponibles - cuposOcupados;
+                       const totalVentas = precioUnitario * cuposOcupados;
+                       
+                       return (
+                         <Box key={index} sx={{ 
+                           display: 'grid', 
+                           gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr 1.2fr',
+                           gap: 1,
+                           p: 2,
+                           borderBottom: index < selectedEvent.actividades.length - 1 ? '1px solid #F3F4F6' : 'none',
+                           '&:hover': { bgcolor: '#F9FAFB' }
+                         }}>
+                           <Typography variant="body2" sx={{ fontSize: '12px', color: '#374151' }}>
+                             {actividad.nombreActividad || 'Actividad'}
+                           </Typography>
+                           <Typography variant="body2" sx={{ fontSize: '12px', color: '#374151', textAlign: 'center' }}>
+                             {formatCurrency(precioUnitario)}
+                           </Typography>
+                           <Typography variant="body2" sx={{ fontSize: '12px', color: '#374151', textAlign: 'center' }}>
+                             {cuposDisponibles.toLocaleString()}
+                           </Typography>
+                           <Typography variant="body2" sx={{ fontSize: '12px', color: '#10B981', fontWeight: 600, textAlign: 'center' }}>
+                             {cuposOcupados.toLocaleString()}
+                           </Typography>
+                           <Typography variant="body2" sx={{ fontSize: '12px', color: '#6B7280', textAlign: 'center' }}>
+                             {disponibles.toLocaleString()}
+                           </Typography>
+                           <Typography variant="body2" sx={{ fontSize: '12px', color: '#10B981', fontWeight: 600, textAlign: 'center' }}>
+                             {formatCurrency(totalVentas)}
+                           </Typography>
+                         </Box>
+                       );
+                     })}
+                     
+                     {/* Fila de Resumen */}
+                     <Box sx={{ 
+                       display: 'grid', 
+                       gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr 1.2fr',
+                       gap: 1,
+                       p: 2,
+                       borderTop: '2px solid #E5E7EB',
+                       bgcolor: '#F9FAFB',
+                       fontWeight: 600
+                     }}>
+                       <Typography variant="body2" sx={{ fontSize: '12px', color: '#374151', fontWeight: 700 }}>
+                         Resumen
+                       </Typography>
+                       <Typography variant="body2" sx={{ fontSize: '12px', color: '#6B7280', textAlign: 'center' }}>
+                         -
+                       </Typography>
+                       <Typography variant="body2" sx={{ fontSize: '12px', color: '#374151', fontWeight: 700, textAlign: 'center' }}>
+                         {(() => {
+                           const totalCupos = selectedEvent.actividades.reduce((total, actividad) => {
+                             return total + (actividad.cuposDisponibles || 0);
+                           }, 0);
+                           return totalCupos.toLocaleString();
+                         })()}
+                       </Typography>
+                       <Typography variant="body2" sx={{ fontSize: '12px', color: '#10B981', fontWeight: 700, textAlign: 'center' }}>
+                         {(() => {
+                           const totalOcupados = selectedEvent.actividades.reduce((total, actividad) => {
+                             return total + (actividad.cuposOcupados || 0);
+                           }, 0);
+                           return totalOcupados.toLocaleString();
+                         })()}
+                       </Typography>
+                       <Typography variant="body2" sx={{ fontSize: '12px', color: '#6B7280', fontWeight: 700, textAlign: 'center' }}>
+                         {(() => {
+                           const totalDisponibles = selectedEvent.actividades.reduce((total, actividad) => {
+                             const disponibles = (actividad.cuposDisponibles || 0) - (actividad.cuposOcupados || 0);
+                             return total + disponibles;
+                           }, 0);
+                           return totalDisponibles.toLocaleString();
+                         })()}
+                       </Typography>
+                       <Typography variant="body2" sx={{ fontSize: '12px', color: '#10B981', fontWeight: 700, textAlign: 'center' }}>
+                         {(() => {
+                           const totalVentas = selectedEvent.actividades.reduce((total, actividad) => {
+                             return total + ((actividad.precioUnitario || 0) * (actividad.cuposOcupados || 0));
+                           }, 0);
+                           return formatCurrency(totalVentas);
+                         })()}
+                       </Typography>
+                     </Box>
+                   </Box>
+                 ) : (
+                   <Box sx={{ 
+                     p: 3, 
+                     textAlign: 'center',
+                     border: '1px solid #E5E7EB',
+                     borderRadius: '8px',
+                     bgcolor: '#F9FAFB'
+                   }}>
+                     <Typography variant="body2" sx={{ color: '#6B7280' }}>
+                       No hay información de actividades disponible
+                     </Typography>
+                   </Box>
+                 )}
+               </Box>
              </Paper>
            </Box>
 
