@@ -134,7 +134,16 @@ const CalendarComponent = ({ selectedEventId }) => {
       }
       
       if (eventDateString) {
-        const eventDateObj = new Date(eventDateString);
+        // Corregir parsing de fecha para evitar problemas de zona horaria
+        // Si la fecha viene en formato YYYY-MM-DD, agregar tiempo local
+        let eventDateObj;
+        if (eventDateString.includes('T')) {
+          // Ya tiene información de tiempo
+          eventDateObj = new Date(eventDateString);
+        } else {
+          // Solo fecha, agregar tiempo local para evitar desfase UTC
+          eventDateObj = new Date(eventDateString + 'T00:00:00');
+        }
         setEventDate(eventDateObj);
         setCurrentDate(eventDateObj);
       }
@@ -248,7 +257,9 @@ const CalendarComponent = ({ selectedEventId }) => {
               color: dayData.isEventDay ? 'white' : 
                      dayData.isCurrentMonth ? '#374151' : '#9CA3AF',
               fontWeight: dayData.isEventDay ? 700 : 400,
-              minHeight: 32,
+              width: 22, // Ancho fijo para círculo perfecto
+              height: 22, // Alto fijo para círculo perfecto
+              minHeight: 22, // Reducido 30% (32 * 0.7 = 22.4 ≈ 22)
               '&:hover': {
                 bgcolor: dayData.isEventDay ? '#2563EB' : '#F3F4F6'
               }
@@ -1178,6 +1189,54 @@ const EventAdminDashboard = () => {
     // Calcular valores de las cards desde las tablas
     const cardValues = calculateCardValues();
 
+    // Mostrar loading mientras se cargan los datos
+    if (loading) {
+      // Usar la variable selectedEvent que ya existe y está correctamente definida
+      const selectedEventName = selectedEvent?.informacionGeneral?.nombreEvento || 'evento';
+      
+      return (
+        <Box sx={{ 
+          bgcolor: '#F5F7FA', 
+          minHeight: 'calc(100vh - 80px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          p: 4
+        }}>
+          <Box sx={{ textAlign: 'center' }}>
+            <Box sx={{ 
+              width: 60, 
+              height: 60, 
+              border: '4px solid #E5E7EB',
+              borderTop: '4px solid #3B82F6',
+              borderRadius: '50%',
+              animation: 'spin 1s linear infinite',
+              mx: 'auto',
+              mb: 3,
+              '@keyframes spin': {
+                '0%': { transform: 'rotate(0deg)' },
+                '100%': { transform: 'rotate(360deg)' }
+              }
+            }} />
+            <Typography variant="h6" sx={{ 
+              color: '#374151', 
+              fontWeight: 600,
+              fontSize: '18px'
+            }}>
+              Cargando datos de {selectedEventName}
+            </Typography>
+            <Typography variant="body2" sx={{ 
+              color: '#6B7280', 
+              mt: 1,
+              fontSize: '14px'
+            }}>
+              Por favor espera un momento...
+            </Typography>
+          </Box>
+        </Box>
+      );
+    }
+
     return (
       <Box sx={{ 
         bgcolor: '#F5F7FA', 
@@ -1487,17 +1546,18 @@ const EventAdminDashboard = () => {
                      {/* Header */}
                      <Box sx={{ 
                        display: 'grid', 
-                       gridTemplateColumns: '2fr 1fr 1fr 1fr 1.2fr',
+                       gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr 1.2fr',
                        gap: 1,
                        bgcolor: '#F9FAFB',
                        p: 2,
                        borderBottom: '1px solid #E5E7EB'
                      }}>
-                       <Typography variant="body2" sx={{ fontWeight: 600, color: '#6B7280', fontSize: '11px' }}>Nombre</Typography>
+                       <Typography variant="body2" sx={{ fontWeight: 600, color: '#6B7280', fontSize: '11px' }}>Producto</Typography>
                        <Typography variant="body2" sx={{ fontWeight: 600, color: '#6B7280', fontSize: '11px', textAlign: 'center' }}>Precio</Typography>
-                       <Typography variant="body2" sx={{ fontWeight: 600, color: '#6B7280', fontSize: '11px', textAlign: 'center' }}>Stock total</Typography>
+                       <Typography variant="body2" sx={{ fontWeight: 600, color: '#6B7280', fontSize: '11px', textAlign: 'center' }}>Stock</Typography>
+                       <Typography variant="body2" sx={{ fontWeight: 600, color: '#6B7280', fontSize: '11px', textAlign: 'center' }}>Disponibles</Typography>
                        <Typography variant="body2" sx={{ fontWeight: 600, color: '#6B7280', fontSize: '11px', textAlign: 'center' }}>Vendidos</Typography>
-                       <Typography variant="body2" sx={{ fontWeight: 600, color: '#6B7280', fontSize: '11px', textAlign: 'center' }}>Total ventas</Typography>
+                       <Typography variant="body2" sx={{ fontWeight: 600, color: '#6B7280', fontSize: '11px', textAlign: 'center' }}>Total venta</Typography>
                      </Box>
                      
                      {/* Rows */}
@@ -1511,7 +1571,7 @@ const EventAdminDashboard = () => {
                        return (
                          <Box key={index} sx={{ 
                            display: 'grid', 
-                           gridTemplateColumns: '2fr 1fr 1fr 1fr 1.2fr',
+                           gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr 1.2fr',
                            gap: 1,
                            p: 2,
                            borderBottom: index < selectedEvent.alimentosBebestibles.length - 1 ? '1px solid #F3F4F6' : 'none',
@@ -1526,6 +1586,9 @@ const EventAdminDashboard = () => {
                            <Typography variant="body2" sx={{ fontSize: '12px', color: '#374151', textAlign: 'center' }}>
                              {stockAsignado.toLocaleString()}
                            </Typography>
+                           <Typography variant="body2" sx={{ fontSize: '12px', color: '#374151', textAlign: 'center' }}>
+                             {(stockAsignado - vendidos).toLocaleString()}
+                           </Typography>
                            <Typography variant="body2" sx={{ fontSize: '12px', color: '#10B981', fontWeight: 600, textAlign: 'center' }}>
                              {vendidos.toLocaleString()}
                            </Typography>
@@ -1539,7 +1602,7 @@ const EventAdminDashboard = () => {
                      {/* Fila de Resumen */}
                      <Box sx={{ 
                        display: 'grid', 
-                       gridTemplateColumns: '2fr 1fr 1fr 1fr 1.2fr',
+                       gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr 1.2fr',
                        gap: 1,
                        p: 2,
                        borderTop: '2px solid #E5E7EB',
@@ -1558,6 +1621,16 @@ const EventAdminDashboard = () => {
                              return total + (item.stockAsignado || 0);
                            }, 0);
                            return totalStock.toLocaleString();
+                         })()}
+                       </Typography>
+                       <Typography variant="body2" sx={{ fontSize: '12px', color: '#374151', fontWeight: 700, textAlign: 'center' }}>
+                         {(() => {
+                           const totalDisponibles = selectedEvent.alimentosBebestibles.reduce((total, item) => {
+                             const stockAsignado = item.stockAsignado || 0;
+                             const vendidos = stockAsignado - (item.stockActual || 0);
+                             return total + (stockAsignado - vendidos);
+                           }, 0);
+                           return totalDisponibles.toLocaleString();
                          })()}
                        </Typography>
                        <Typography variant="body2" sx={{ fontSize: '12px', color: '#10B981', fontWeight: 700, textAlign: 'center' }}>
@@ -1618,12 +1691,12 @@ const EventAdminDashboard = () => {
                        p: 2,
                        borderBottom: '1px solid #E5E7EB'
                      }}>
-                       <Typography variant="body2" sx={{ fontWeight: 600, color: '#6B7280', fontSize: '11px' }}>Nombre Actividad</Typography>
+                       <Typography variant="body2" sx={{ fontWeight: 600, color: '#6B7280', fontSize: '11px' }}>Actividad</Typography>
                        <Typography variant="body2" sx={{ fontWeight: 600, color: '#6B7280', fontSize: '11px', textAlign: 'center' }}>Precio</Typography>
-                       <Typography variant="body2" sx={{ fontWeight: 600, color: '#6B7280', fontSize: '11px', textAlign: 'center' }}>Cupos Total</Typography>
-                       <Typography variant="body2" sx={{ fontWeight: 600, color: '#6B7280', fontSize: '11px', textAlign: 'center' }}>Vendidos</Typography>
+                       <Typography variant="body2" sx={{ fontWeight: 600, color: '#6B7280', fontSize: '11px', textAlign: 'center' }}>Cupos</Typography>
                        <Typography variant="body2" sx={{ fontWeight: 600, color: '#6B7280', fontSize: '11px', textAlign: 'center' }}>Disponibles</Typography>
-                       <Typography variant="body2" sx={{ fontWeight: 600, color: '#6B7280', fontSize: '11px', textAlign: 'center' }}>Total ventas</Typography>
+                       <Typography variant="body2" sx={{ fontWeight: 600, color: '#6B7280', fontSize: '11px', textAlign: 'center' }}>Vendidos</Typography>
+                       <Typography variant="body2" sx={{ fontWeight: 600, color: '#6B7280', fontSize: '11px', textAlign: 'center' }}>Total venta</Typography>
                      </Box>
                      
                      {/* Rows */}
@@ -1652,11 +1725,11 @@ const EventAdminDashboard = () => {
                            <Typography variant="body2" sx={{ fontSize: '12px', color: '#374151', textAlign: 'center' }}>
                              {cuposDisponibles.toLocaleString()}
                            </Typography>
-                           <Typography variant="body2" sx={{ fontSize: '12px', color: '#10B981', fontWeight: 600, textAlign: 'center' }}>
-                             {cuposOcupados.toLocaleString()}
-                           </Typography>
                            <Typography variant="body2" sx={{ fontSize: '12px', color: '#6B7280', textAlign: 'center' }}>
                              {disponibles.toLocaleString()}
+                           </Typography>
+                           <Typography variant="body2" sx={{ fontSize: '12px', color: '#10B981', fontWeight: 600, textAlign: 'center' }}>
+                             {cuposOcupados.toLocaleString()}
                            </Typography>
                            <Typography variant="body2" sx={{ fontSize: '12px', color: '#10B981', fontWeight: 600, textAlign: 'center' }}>
                              {formatCurrency(totalVentas)}
@@ -1689,14 +1762,6 @@ const EventAdminDashboard = () => {
                            return totalCupos.toLocaleString();
                          })()}
                        </Typography>
-                       <Typography variant="body2" sx={{ fontSize: '12px', color: '#10B981', fontWeight: 700, textAlign: 'center' }}>
-                         {(() => {
-                           const totalOcupados = selectedEvent.actividades.reduce((total, actividad) => {
-                             return total + (actividad.cuposOcupados || 0);
-                           }, 0);
-                           return totalOcupados.toLocaleString();
-                         })()}
-                       </Typography>
                        <Typography variant="body2" sx={{ fontSize: '12px', color: '#6B7280', fontWeight: 700, textAlign: 'center' }}>
                          {(() => {
                            const totalDisponibles = selectedEvent.actividades.reduce((total, actividad) => {
@@ -1704,6 +1769,14 @@ const EventAdminDashboard = () => {
                              return total + disponibles;
                            }, 0);
                            return totalDisponibles.toLocaleString();
+                         })()}
+                       </Typography>
+                       <Typography variant="body2" sx={{ fontSize: '12px', color: '#10B981', fontWeight: 700, textAlign: 'center' }}>
+                         {(() => {
+                           const totalOcupados = selectedEvent.actividades.reduce((total, actividad) => {
+                             return total + (actividad.cuposOcupados || 0);
+                           }, 0);
+                           return totalOcupados.toLocaleString();
                          })()}
                        </Typography>
                        <Typography variant="body2" sx={{ fontSize: '12px', color: '#10B981', fontWeight: 700, textAlign: 'center' }}>
