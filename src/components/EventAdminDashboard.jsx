@@ -1083,94 +1083,21 @@ const EventAdminDashboard = () => {
       try {
         setLoading(true);
         
-        const usersResponse = await fetch(`${API_CONFIG.ENDPOINTS.USERS}?eventoId=${selectedEventId}`);
-        const usersData = await usersResponse.json();
-        
-        const users = Array.isArray(usersData) ? usersData : (usersData.data?.users || usersData.data?.items || usersData.users || usersData.data || []);
-        
+        // Solo obtener inventario para la sección de productos agendables
         const inventoryResponse = await fetch(`${API_CONFIG.ENDPOINTS.INVENTORY}?eventoId=${selectedEventId}`);
         const inventoryData = await inventoryResponse.json();
         
         const inventoryArray = Array.isArray(inventoryData) ? inventoryData : (inventoryData.data?.items || inventoryData.inventory || inventoryData.data || []);
         setInventory(inventoryArray);
         
-        // Calcular tickets vendidos desde el evento seleccionado
-        let ticketsVendidos = 0;
-        if (selectedEvent && selectedEvent.entradas) {
-          ticketsVendidos = selectedEvent.entradas.reduce((total, entrada) => {
-            return total + (entrada.entradasVendidas || 0);
-          }, 0);
-        }
-        
-        // Calcular total de ventas usando los campos del evento seleccionado
-        let totalVentas = 0;
-        
-        if (selectedEvent) {
-          // 1. Entradas: precio * entradasVendidas
-          const entradas = selectedEvent.entradas || [];
-          const ventasEntradas = entradas.reduce((total, entrada) => {
-            const precio = entrada.precio || 0;
-            const vendidas = entrada.entradasVendidas || 0;
-            return total + (precio * vendidas);
-          }, 0);
-          
-          // 2. Alimentos y Bebidas: precioUnitario * (stockAsignado - stockActual)
-          const alimentosBebestibles = selectedEvent.alimentosBebestibles || [];
-          const ventasAlimentos = alimentosBebestibles.reduce((total, item) => {
-            const precioUnitario = item.precioUnitario || 0;
-            const stockAsignado = item.stockAsignado || 0;
-            const stockActual = item.stockActual || 0;
-            const vendidos = stockAsignado - stockActual;
-            return total + (precioUnitario * vendidos);
-          }, 0);
-          
-          // 3. Actividades: precioUnitario * cuposOcupados
-          const actividades = selectedEvent.actividades || [];
-          const ventasActividades = actividades.reduce((total, actividad) => {
-            const precioUnitario = actividad.precioUnitario || 0;
-            const cuposOcupados = actividad.cuposOcupados || 0;
-            return total + (precioUnitario * cuposOcupados);
-          }, 0);
-          
-          totalVentas = ventasEntradas + ventasAlimentos + ventasActividades;
-          
-          // Log para debug
-          console.log('💰 Cálculo de ventas:', {
-            ventasEntradas,
-            ventasAlimentos,
-            ventasActividades,
-            totalVentas
-          });
-        }
-        
-        const ventasDelDia = Math.floor(totalVentas * 0.9);
-        
-        const ventasDetalle = inventoryArray.reduce((acc, item) => {
-          const ventasItem = item.precioVenta * (item.stockInicial - item.stockActual);
-          const categoria = item.categoria;
-          
-          if (acc[categoria]) {
-            acc[categoria] += ventasItem;
-          } else {
-            acc[categoria] = ventasItem;
-          }
-          
-          return acc;
-        }, {});
-        
-        const ventasDetalleArray = Object.entries(ventasDetalle).map(([categoria, monto]) => ({
-          categoria,
-          monto
-        }));
-        
         // Determinar el estado del evento usando la nueva función
         const eventStatus = getEventStatus(selectedEvent);
          
+         // Inicializar con valores por defecto - se calcularán después de procesar las tablas
          setDashboardData({
-           totalVentas,
-           ventasDelDia,
-           ticketsVendidos,
-           ventasDetalle: ventasDetalleArray,
+           totalVentas: 0,
+           ventasDelDia: 0,
+           ticketsVendidos: 0,
            eventoActivo: eventStatus.status,
            eventStatus: eventStatus
          });
@@ -1180,7 +1107,6 @@ const EventAdminDashboard = () => {
            totalVentas: 0,
            ventasDelDia: 0,
            ticketsVendidos: 0,
-           ventasDetalle: [],
            eventoActivo: 'programado',
            eventStatus: { status: 'programado', message: 'Evento programado', color: '#3B82F6' }
          });
@@ -1196,6 +1122,61 @@ const EventAdminDashboard = () => {
         minimumFractionDigits: 0
       }).format(amount);
     };
+
+    // Función para calcular los valores de las cards desde las tablas
+    const calculateCardValues = () => {
+      if (!selectedEvent) return { totalVentas: 0, ticketsVendidos: 0, ventasDelDia: 0 };
+
+      // 1. Calcular total de tickets vendidos desde la tabla Tickets
+      let ticketsVendidos = 0;
+      if (selectedEvent.entradas) {
+        ticketsVendidos = selectedEvent.entradas.reduce((total, entrada) => {
+          return total + (entrada.entradasVendidas || 0);
+        }, 0);
+      }
+
+      // 2. Calcular total de ventas sumando los totales de cada sección
+      
+      // 2.1 Total ventas de Tickets
+      let totalVentasTickets = 0;
+      if (selectedEvent.entradas) {
+        totalVentasTickets = selectedEvent.entradas.reduce((total, entrada) => {
+          return total + ((entrada.precio || 0) * (entrada.entradasVendidas || 0));
+        }, 0);
+      }
+
+      // 2.2 Total ventas de Alimentos y Bebidas
+      let totalVentasAlimentos = 0;
+      if (selectedEvent.alimentosBebestibles) {
+        totalVentasAlimentos = selectedEvent.alimentosBebestibles.reduce((total, item) => {
+          const vendidos = (item.stockAsignado || 0) - (item.stockActual || 0);
+          return total + ((item.precioUnitario || 0) * vendidos);
+        }, 0);
+      }
+
+      // 2.3 Total ventas de Actividades
+      let totalVentasActividades = 0;
+      if (selectedEvent.actividades) {
+        totalVentasActividades = selectedEvent.actividades.reduce((total, actividad) => {
+          return total + ((actividad.precioUnitario || 0) * (actividad.cuposOcupados || 0));
+        }, 0);
+      }
+
+      // 3. Sumar todos los totales
+      const totalVentas = totalVentasTickets + totalVentasAlimentos + totalVentasActividades;
+
+      // 4. Ventas del día = Total de ventas (temporalmente)
+      const ventasDelDia = totalVentas;
+
+      return {
+        totalVentas,
+        ticketsVendidos,
+        ventasDelDia
+      };
+    };
+
+    // Calcular valores de las cards desde las tablas
+    const cardValues = calculateCardValues();
 
     return (
       <Box sx={{ 
@@ -1268,7 +1249,7 @@ const EventAdminDashboard = () => {
                   </Typography>
                 </Stack>
                 <Typography variant="h4" sx={{ color: '#374151', fontWeight: 700 }}>
-                  {formatCurrency(dashboardData.totalVentas)}
+                  {formatCurrency(cardValues.totalVentas)}
                 </Typography>
               </Box>
             </Stack>
@@ -1290,7 +1271,7 @@ const EventAdminDashboard = () => {
                   </Typography>
                 </Stack>
                 <Typography variant="h4" sx={{ color: '#374151', fontWeight: 700 }}>
-                  {formatCurrency(dashboardData.ventasDelDia)}
+                  {formatCurrency(cardValues.ventasDelDia)}
                 </Typography>
               </Box>
             </Stack>
@@ -1312,7 +1293,7 @@ const EventAdminDashboard = () => {
                   </Typography>
                 </Stack>
                 <Typography variant="h4" sx={{ color: '#374151', fontWeight: 700 }}>
-                  {dashboardData.ticketsVendidos}
+                  {cardValues.ticketsVendidos}
                 </Typography>
               </Box>
             </Stack>
