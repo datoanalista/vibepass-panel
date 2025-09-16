@@ -220,8 +220,8 @@ const ConfiguracionEntradas = ({
                   <Paper key={entrada.id} elevation={1} sx={{ p: 3, bgcolor: '#D9D9D9' }}>
                     {/* Layout: Una fila con todos los campos usando flexbox */}
                     <Box sx={{ display: 'flex', gap: 2, alignItems: 'flex-start', flexWrap: 'wrap' }}>
-                      {/* Tipo de entrada - MÁS ANCHO */}
-                      <Box sx={{ flex: '1 1 300px', minWidth: '300px' }}>
+                      {/* Tipo de entrada - ANCHO OPTIMIZADO */}
+                      <Box sx={{ flex: '0 0 180px', minWidth: '180px' }}>
                         <Typography variant="subtitle1" sx={{ mb: 1, fontWeight: 500, color: '#374151', fontSize: '14px' }}>
                           Tipo de entrada
                         </Typography>
