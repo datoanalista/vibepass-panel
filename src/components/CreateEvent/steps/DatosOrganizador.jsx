@@ -31,6 +31,7 @@ import {
   ArrowBack as ArrowBackIcon
 } from '@mui/icons-material';
 import Header from '../../Header';
+import useAuth from '../../../hooks/useAuth';
 
 
 const DatosOrganizador = ({ 
@@ -50,7 +51,35 @@ const DatosOrganizador = ({
   draftSaveState
 }) => {
   const router = useRouter();
+  const { isAdmin } = useAuth();
   const steps = ['Información General', 'Configuración de Entradas', 'Alimentos y bebestibles', 'Actividades', 'Datos del Organizador'];
+
+  // Determinar si los campos deben estar bloqueados
+  // Solo los admins pueden editar los datos del organizador
+  const fieldsDisabled = !isAdmin();
+
+  // Estilos comunes para los campos
+  const getFieldStyles = (disabled) => ({
+    '& .MuiOutlinedInput-root': {
+      borderRadius: '10px',
+      backgroundColor: disabled ? '#F3F4F6' : '#FFFFFF',
+      boxShadow: '0px 4px 4px 0px rgba(0, 0, 0, 0.25)',
+      '& fieldset': {
+        border: 'none'
+      },
+      '&:hover': {
+        boxShadow: disabled ? '0px 4px 4px 0px rgba(0, 0, 0, 0.25)' : '0px 6px 6px 0px rgba(0, 0, 0, 0.3)'
+      },
+      '&.Mui-focused': {
+        boxShadow: '0px 4px 4px 0px rgba(0, 0, 0, 0.25)',
+        border: '2px solid #2E7CE4'
+      },
+      '&.Mui-disabled': {
+        backgroundColor: '#F3F4F6',
+        color: '#6B7280'
+      }
+    }
+  });
 
   // Función para volver al panel de eventos
   const handleBackToEvents = () => {
@@ -160,23 +189,8 @@ const DatosOrganizador = ({
                   placeholder="Juan Pérez"
                   variant="outlined"
                   required
-                  sx={{
-                    '& .MuiOutlinedInput-root': {
-                      borderRadius: '10px',
-                      backgroundColor: '#FFFFFF',
-                      boxShadow: '0px 4px 4px 0px rgba(0, 0, 0, 0.25)',
-                      '& fieldset': {
-                        border: 'none'
-                      },
-                      '&:hover': {
-                        boxShadow: '0px 6px 6px 0px rgba(0, 0, 0, 0.3)'
-                      },
-                      '&.Mui-focused': {
-                        boxShadow: '0px 4px 4px 0px rgba(0, 0, 0, 0.25)',
-                        border: '2px solid #2E7CE4'
-                      }
-                    }
-                  }}
+                  disabled={fieldsDisabled}
+                  sx={getFieldStyles(fieldsDisabled)}
                 />
               </Box>
 
@@ -193,23 +207,8 @@ const DatosOrganizador = ({
                   placeholder="juan.perez@colegio.cl"
                   variant="outlined"
                   required
-                  sx={{
-                    '& .MuiOutlinedInput-root': {
-                      borderRadius: '10px',
-                      backgroundColor: '#FFFFFF',
-                      boxShadow: '0px 4px 4px 0px rgba(0, 0, 0, 0.25)',
-                      '& fieldset': {
-                        border: 'none'
-                      },
-                      '&:hover': {
-                        boxShadow: '0px 6px 6px 0px rgba(0, 0, 0, 0.3)'
-                      },
-                      '&.Mui-focused': {
-                        boxShadow: '0px 4px 4px 0px rgba(0, 0, 0, 0.25)',
-                        border: '2px solid #2E7CE4'
-                      }
-                    }
-                  }}
+                  disabled={fieldsDisabled}
+                  sx={getFieldStyles(fieldsDisabled)}
                 />
               </Box>
 
@@ -225,23 +224,8 @@ const DatosOrganizador = ({
                   placeholder="+56 9 1234 5678"
                   variant="outlined"
                   required
-                  sx={{
-                    '& .MuiOutlinedInput-root': {
-                      borderRadius: '10px',
-                      backgroundColor: '#FFFFFF',
-                      boxShadow: '0px 4px 4px 0px rgba(0, 0, 0, 0.25)',
-                      '& fieldset': {
-                        border: 'none'
-                      },
-                      '&:hover': {
-                        boxShadow: '0px 6px 6px 0px rgba(0, 0, 0, 0.3)'
-                      },
-                      '&.Mui-focused': {
-                        boxShadow: '0px 4px 4px 0px rgba(0, 0, 0, 0.25)',
-                        border: '2px solid #2E7CE4'
-                      }
-                    }
-                  }}
+                  disabled={fieldsDisabled}
+                  sx={getFieldStyles(fieldsDisabled)}
                 />
               </Box>
 
@@ -257,23 +241,8 @@ const DatosOrganizador = ({
                   placeholder="Colegio San Patricio"
                   variant="outlined"
                   required
-                  sx={{
-                    '& .MuiOutlinedInput-root': {
-                      borderRadius: '10px',
-                      backgroundColor: '#FFFFFF',
-                      boxShadow: '0px 4px 4px 0px rgba(0, 0, 0, 0.25)',
-                      '& fieldset': {
-                        border: 'none'
-                      },
-                      '&:hover': {
-                        boxShadow: '0px 6px 6px 0px rgba(0, 0, 0, 0.3)'
-                      },
-                      '&.Mui-focused': {
-                        boxShadow: '0px 4px 4px 0px rgba(0, 0, 0, 0.25)',
-                        border: '2px solid #2E7CE4'
-                      }
-                    }
-                  }}
+                  disabled={fieldsDisabled}
+                  sx={getFieldStyles(fieldsDisabled)}
                 />
               </Box>
 
@@ -289,23 +258,8 @@ const DatosOrganizador = ({
                   placeholder="77.012.456-1"
                   variant="outlined"
                   required
-                  sx={{
-                    '& .MuiOutlinedInput-root': {
-                      borderRadius: '10px',
-                      backgroundColor: '#FFFFFF',
-                      boxShadow: '0px 4px 4px 0px rgba(0, 0, 0, 0.25)',
-                      '& fieldset': {
-                        border: 'none'
-                      },
-                      '&:hover': {
-                        boxShadow: '0px 6px 6px 0px rgba(0, 0, 0, 0.3)'
-                      },
-                      '&.Mui-focused': {
-                        boxShadow: '0px 4px 4px 0px rgba(0, 0, 0, 0.25)',
-                        border: '2px solid #2E7CE4'
-                      }
-                    }
-                  }}
+                  disabled={fieldsDisabled}
+                  sx={getFieldStyles(fieldsDisabled)}
                 />
               </Box>
 
@@ -495,12 +449,14 @@ const DatosOrganizador = ({
         fullWidth
       >
         <DialogTitle sx={{ textAlign: 'center', color: 'success.main', fontWeight: 600 }}>
-          🎉 ¡Evento creado exitosamente!
+          {isEditMode ? '✅ ¡Evento actualizado exitosamente!' : '🎉 ¡Evento creado exitosamente!'}
         </DialogTitle>
         <DialogContent>
           <Typography sx={{ textAlign: 'center', color: 'grey.600' }}>
-            El evento "{eventFormData.nombreEvento}" ha sido creado correctamente.
-            Serás redirigido a la vista principal de eventos.
+            {isEditMode 
+              ? `El evento "${eventFormData.nombreEvento}" ha sido actualizado correctamente. Serás redirigido a la vista principal de eventos.`
+              : `El evento "${eventFormData.nombreEvento}" ha sido creado correctamente. Serás redirigido a la vista principal de eventos.`
+            }
           </Typography>
         </DialogContent>
         <DialogActions sx={{ justifyContent: 'center', pb: 3 }}>

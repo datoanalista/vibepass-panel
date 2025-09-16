@@ -3,6 +3,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import API_CONFIG from '../config/api';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import useAuth from '../hooks/useAuth';
 
 // Función para formatear fechas de manera consistente
 const formatEventDate = (dateString) => {
@@ -22,6 +23,49 @@ const formatEventDate = (dateString) => {
     console.error('Error formatting date:', error);
     return dateString;
   }
+};
+
+// Función para calcular entradas vendidas e ingresos totales
+const calculateEventMetrics = (event) => {
+  // Calcular entradas vendidas
+  const entradasVendidas = event.entradas?.reduce((total, entrada) => {
+    return total + (entrada.entradasVendidas || 0);
+  }, 0) || 0;
+
+  // Calcular ingresos totales
+  let ingresosTotales = 0;
+
+  // 1. Ingresos de entradas
+  if (event.entradas) {
+    ingresosTotales += event.entradas.reduce((total, entrada) => {
+      const precio = parseFloat(entrada.precio || 0);
+      const vendidas = parseInt(entrada.entradasVendidas || 0);
+      return total + (precio * vendidas);
+    }, 0);
+  }
+
+  // 2. Ingresos de alimentos y bebidas
+  if (event.alimentosBebestibles) {
+    ingresosTotales += event.alimentosBebestibles.reduce((total, item) => {
+      const vendidos = (item.stockAsignado || 0) - (item.stockActual || 0);
+      const precio = parseFloat(item.precioUnitario || 0);
+      return total + (precio * vendidos);
+    }, 0);
+  }
+
+  // 3. Ingresos de actividades
+  if (event.actividades) {
+    ingresosTotales += event.actividades.reduce((total, actividad) => {
+      const precio = parseFloat(actividad.precioUnitario || 0);
+      const ocupados = parseInt(actividad.cuposOcupados || 0);
+      return total + (precio * ocupados);
+    }, 0);
+  }
+
+  return {
+    entradasVendidas,
+    ingresosTotales
+  };
 };
 
 // Función para determinar el estado del evento según la hora actual
@@ -195,6 +239,7 @@ import Header from './Header';
 
 const EventsOverview = () => {
   const router = useRouter();
+  const { user, logout, isAdmin } = useAuth();
   const [mounted, setMounted] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [events, setEvents] = useState([]);
@@ -329,7 +374,22 @@ const EventsOverview = () => {
         await updateFinishedEvents();
       }
       
-      const response = await fetch(`${API_CONFIG.ENDPOINTS.EVENTS}?limit=900`, API_CONFIG.REQUEST_CONFIG);
+      // Agregar token de autorización
+      const token = sessionStorage.getItem('authToken');
+      const headers = {
+        ...API_CONFIG.REQUEST_CONFIG.headers,
+        'Authorization': `Bearer ${token}`
+      };
+      
+      // USAR ENDPOINT CORRECTO: /api/dashboard/events que ya filtra automáticamente
+      // 👑 Admin: Ve TODOS los eventos
+      // 🎯 Organizador: Ve SOLO sus propios eventos (filtrado automático en backend)
+      const url = `${API_CONFIG.ENDPOINTS.DASHBOARD_EVENTS}?limit=900`;
+      
+      const response = await fetch(url, {
+        ...API_CONFIG.REQUEST_CONFIG,
+        headers
+      });
       const result = await response.json();
       
       if (response.ok && result.status === 'success') {
@@ -401,7 +461,18 @@ const EventsOverview = () => {
   const fetchDrafts = async () => {
     try {
       setDraftsLoading(true);
-      const response = await fetch(`${API_CONFIG.ENDPOINTS.DRAFTS}?limit=900`, API_CONFIG.REQUEST_CONFIG);
+      
+      // Agregar token de autorización
+      const token = sessionStorage.getItem('authToken');
+      const headers = {
+        ...API_CONFIG.REQUEST_CONFIG.headers,
+        'Authorization': `Bearer ${token}`
+      };
+      
+      const response = await fetch(`${API_CONFIG.ENDPOINTS.DRAFTS}?limit=900`, {
+        ...API_CONFIG.REQUEST_CONFIG,
+        headers
+      });
       const result = await response.json();
       
       if (result.status === 'success') {
@@ -875,7 +946,7 @@ const EventsOverview = () => {
     const precioMinimo = event.entradas && event.entradas.length > 0 
       ? Math.min(...event.entradas.map(e => e.precio || 0))
       : 0;
-    const isExpanded = expandedEvents.has(event.id);
+    const isExpanded = expandedEvents.has(event._id);
     
     // Formatear periodo de tiempo
     const periodo = `${event.informacionGeneral.horaInicio} a ${event.informacionGeneral.horaTermino}`;
@@ -1019,7 +1090,7 @@ const EventsOverview = () => {
               
               <IconButton 
                 size="small"
-                onClick={() => toggleEventExpansion(event.id)}
+                onClick={() => toggleEventExpansion(event._id)}
                 sx={{ 
                   color: '#6B7280',
                   transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
@@ -1146,12 +1217,12 @@ const EventsOverview = () => {
               const precioMinimo = event.entradas && event.entradas.length > 0 
                 ? Math.min(...event.entradas.map(e => e.precio || 0))
                 : 0;
-              const ingresosTotales = event.ingresosTotales || 0;
-              const entradasVendidas = event.totalEntradasVendidas || 0;
+              const metrics = calculateEventMetrics(event);
+              const { entradasVendidas, ingresosTotales } = metrics;
 
               return (
                 <TableRow 
-                  key={event.id || event._id || `event-${index}`}
+                  key={event._id || `event-${index}`}
                   sx={{ 
                     bgcolor: '#FFFFFF',
                     '&:hover': { bgcolor: '#F3F4F6' },
@@ -1290,12 +1361,8 @@ const EventsOverview = () => {
           </TableHead>
           <TableBody>
             {events.map((event, index) => {
-              const entradasVendidas = event.entradas?.reduce((total, entrada) => total + (entrada.entradasVendidas || 0), 0) || 0;
-              const ingresosTotales = event.entradas?.reduce((total, entrada) => {
-                const precio = parseFloat(entrada.precio || 0);
-                const vendidas = parseInt(entrada.entradasVendidas || 0);
-                return total + (precio * vendidas);
-              }, 0) || 0;
+              const metrics = calculateEventMetrics(event);
+              const { entradasVendidas, ingresosTotales } = metrics;
 
               return (
                 <TableRow key={event._id || `event-${index}`} sx={{ '&:hover': { bgcolor: '#F9FAFB' } }}>
@@ -1391,12 +1458,8 @@ const EventsOverview = () => {
           </TableHead>
           <TableBody>
             {events.map((event, index) => {
-              const entradasVendidas = event.entradas?.reduce((total, entrada) => total + (entrada.entradasVendidas || 0), 0) || 0;
-              const ingresosTotales = event.entradas?.reduce((total, entrada) => {
-                const precio = parseFloat(entrada.precio || 0);
-                const vendidas = parseInt(entrada.entradasVendidas || 0);
-                return total + (precio * vendidas);
-              }, 0) || 0;
+              const metrics = calculateEventMetrics(event);
+              const { entradasVendidas, ingresosTotales } = metrics;
 
               return (
                 <TableRow key={event._id || `event-${index}`} sx={{ '&:hover': { bgcolor: '#F9FAFB' } }}>
@@ -1500,8 +1563,8 @@ const EventsOverview = () => {
           </TableHead>
           <TableBody>
             {drafts.map((draft, index) => {
-              const ingresosTotales = draft.ingresosTotales || 0;
-              const entradasVendidas = draft.entradas?.reduce((total, entrada) => total + (entrada.entradasVendidas || 0), 0) || 0;
+              const metrics = calculateEventMetrics(draft);
+              const { entradasVendidas, ingresosTotales } = metrics;
 
               return (
                 <TableRow 
@@ -1865,7 +1928,7 @@ const EventsOverview = () => {
               ) : (
                 <Stack spacing={2}>
                   {(expandedSections.activos ? eventosActivosFiltrados : eventosActivosFiltrados.slice(0, 3)).map((event) => (
-                    <EventCard key={event.id} event={event} />
+                    <EventCard key={event._id} event={event} />
                   ))}
                   {eventosActivosFiltrados.length > 3 && (
                     <Box sx={{ textAlign: 'center', py: 2 }}>
@@ -2426,77 +2489,79 @@ const EventsOverview = () => {
 
                 {/* Configuración del Evento */}
                 <Box>
-                  <Typography variant="h6" sx={{ mb: 2, color: 'white', fontWeight: 700 }}>
+                  <Typography variant="h6" sx={{ mb: 2, color: '#374151', fontWeight: 700 }}>
                     ⚙️ Configuración del Evento
                   </Typography>
-                  <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 2 }}>
-                    <Box>
-                      <Typography variant="body2" sx={{ color: 'white', mb: 0.5, fontWeight: 600 }}>Permite Devolución</Typography>
-                      <Chip 
-                        label={selectedEventForDetails.configuracion?.permiteDevolucion ? 'Sí' : 'No'}
-                        size="small"
-                        sx={{ 
-                          bgcolor: selectedEventForDetails.configuracion?.permiteDevolucion ? '#10B981' : '#EF4444',
-                          color: 'white',
-                          fontWeight: 600
-                        }}
-                      />
+                  <Paper sx={{ p: 3, bgcolor: '#F9FAFB', border: '1px solid #E5E7EB' }}>
+                    <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 3 }}>
+                      <Box>
+                        <Typography variant="body2" sx={{ color: '#6B7280', mb: 1, fontWeight: 600 }}>Permite Devolución</Typography>
+                        <Chip 
+                          label={selectedEventForDetails.configuracion?.permiteDevolucion ? 'Sí' : 'No'}
+                          size="small"
+                          sx={{ 
+                            bgcolor: selectedEventForDetails.configuracion?.permiteDevolucion ? '#10B981' : '#EF4444',
+                            color: 'white',
+                            fontWeight: 600
+                          }}
+                        />
+                      </Box>
+                      <Box>
+                        <Typography variant="body2" sx={{ color: '#6B7280', mb: 1, fontWeight: 600 }}>Requiere Aprobación</Typography>
+                        <Chip 
+                          label={selectedEventForDetails.configuracion?.requiereAprobacion ? 'Sí' : 'No'}
+                          size="small"
+                          sx={{ 
+                            bgcolor: selectedEventForDetails.configuracion?.requiereAprobacion ? '#F59E0B' : '#10B981',
+                            color: 'white',
+                            fontWeight: 600
+                          }}
+                        />
+                      </Box>
+                      <Box>
+                        <Typography variant="body2" sx={{ color: '#6B7280', mb: 1, fontWeight: 600 }}>Es Público</Typography>
+                        <Chip 
+                          label={selectedEventForDetails.configuracion?.esPublico ? 'Sí' : 'No'}
+                          size="small"
+                          sx={{ 
+                            bgcolor: selectedEventForDetails.configuracion?.esPublico ? '#10B981' : '#6B7280',
+                            color: 'white',
+                            fontWeight: 600
+                          }}
+                        />
+                      </Box>
+                      <Box>
+                        <Typography variant="body2" sx={{ color: '#6B7280', mb: 1, fontWeight: 600 }}>Notificaciones</Typography>
+                        <Chip 
+                          label={selectedEventForDetails.configuracion?.notificacionesHabilitadas ? 'Habilitadas' : 'Deshabilitadas'}
+                          size="small"
+                          sx={{ 
+                            bgcolor: selectedEventForDetails.configuracion?.notificacionesHabilitadas ? '#10B981' : '#EF4444',
+                            color: 'white',
+                            fontWeight: 600
+                          }}
+                        />
+                      </Box>
+                      <Box>
+                        <Typography variant="body2" sx={{ color: '#6B7280', mb: 1, fontWeight: 600 }}>Límite Asistentes</Typography>
+                        <Typography variant="body1" sx={{ fontWeight: 500, color: '#374151' }}>
+                          {selectedEventForDetails.configuracion?.limiteAsistentes || 'Sin límite'}
+                        </Typography>
+                      </Box>
+                      <Box>
+                        <Typography variant="body2" sx={{ color: '#6B7280', mb: 1, fontWeight: 600 }}>Estado del Evento</Typography>
+                        <Chip 
+                          label={getEventStatus(selectedEventForDetails, currentTime).message}
+                          size="small"
+                          sx={{ 
+                            bgcolor: getEventStatus(selectedEventForDetails, currentTime).color,
+                            color: 'white',
+                            fontWeight: 600
+                          }}
+                        />
+                      </Box>
                     </Box>
-                    <Box>
-                      <Typography variant="body2" sx={{ color: 'white', mb: 0.5, fontWeight: 600 }}>Requiere Aprobación</Typography>
-                      <Chip 
-                        label={selectedEventForDetails.configuracion?.requiereAprobacion ? 'Sí' : 'No'}
-                        size="small"
-                        sx={{ 
-                          bgcolor: selectedEventForDetails.configuracion?.requiereAprobacion ? '#F59E0B' : '#10B981',
-                          color: 'white',
-                          fontWeight: 600
-                        }}
-                      />
-                    </Box>
-                    <Box>
-                      <Typography variant="body2" sx={{ color: 'white', mb: 0.5, fontWeight: 600 }}>Es Público</Typography>
-                      <Chip 
-                        label={selectedEventForDetails.configuracion?.esPublico ? 'Sí' : 'No'}
-                        size="small"
-                        sx={{ 
-                          bgcolor: selectedEventForDetails.configuracion?.esPublico ? '#10B981' : '#6B7280',
-                          color: 'white',
-                          fontWeight: 600
-                        }}
-                      />
-                    </Box>
-                    <Box>
-                      <Typography variant="body2" sx={{ color: 'white', mb: 0.5, fontWeight: 600 }}>Notificaciones</Typography>
-                      <Chip 
-                        label={selectedEventForDetails.configuracion?.notificacionesHabilitadas ? 'Habilitadas' : 'Deshabilitadas'}
-                        size="small"
-                        sx={{ 
-                          bgcolor: selectedEventForDetails.configuracion?.notificacionesHabilitadas ? '#10B981' : '#EF4444',
-                          color: 'white',
-                          fontWeight: 600
-                        }}
-                      />
-                    </Box>
-                    <Box>
-                      <Typography variant="body2" sx={{ color: 'white', mb: 0.5, fontWeight: 600 }}>Límite Asistentes</Typography>
-                      <Typography variant="body1" sx={{ fontWeight: 500 }}>
-                        {selectedEventForDetails.configuracion?.limiteAsistentes || 'Sin límite'}
-                      </Typography>
-                    </Box>
-                    <Box>
-                      <Typography variant="body2" sx={{ color: '#6B7280', mb: 0.5 }}>Estado del Evento</Typography>
-                      <Chip 
-                        label={getEventStatus(selectedEventForDetails, currentTime).message}
-                        size="small"
-                        sx={{ 
-                          bgcolor: getEventStatus(selectedEventForDetails, currentTime).color,
-                          color: 'white',
-                          fontWeight: 600
-                        }}
-                      />
-                    </Box>
-                  </Box>
+                  </Paper>
                 </Box>
 
                 <Divider />
@@ -2742,7 +2807,7 @@ const EventsOverview = () => {
                     <Paper sx={{ p: 2, bgcolor: '#F0FDF4', border: '1px solid #BBF7D0' }}>
                       <Typography variant="body2" sx={{ color: '#166534', mb: 0.5 }}>Total Entradas Vendidas</Typography>
                       <Typography variant="h6" sx={{ color: '#166534', fontWeight: 700 }}>
-                        {selectedEventForDetails.entradas?.reduce((total, entrada) => total + (entrada.entradasVendidas || 0), 0) || 0}
+                        {calculateEventMetrics(selectedEventForDetails).entradasVendidas}
                       </Typography>
                     </Paper>
                     <Paper sx={{ p: 2, bgcolor: '#F0FDF4', border: '1px solid #BBF7D0' }}>
@@ -2754,11 +2819,7 @@ const EventsOverview = () => {
                     <Paper sx={{ p: 2, bgcolor: '#F0FDF4', border: '1px solid #BBF7D0' }}>
                       <Typography variant="body2" sx={{ color: '#166534', mb: 0.5 }}>Ingresos por Entradas</Typography>
                       <Typography variant="h6" sx={{ color: '#166534', fontWeight: 700 }}>
-                        ${selectedEventForDetails.entradas?.reduce((total, entrada) => {
-                          const precio = parseFloat(entrada.precio || 0);
-                          const vendidas = parseInt(entrada.entradasVendidas || 0);
-                          return total + (precio * vendidas);
-                        }, 0).toLocaleString() || 0} CLP
+                        ${calculateEventMetrics(selectedEventForDetails).ingresosTotales.toLocaleString()} CLP
                       </Typography>
                     </Paper>
                     <Paper sx={{ p: 2, bgcolor: '#F0FDF4', border: '1px solid #BBF7D0' }}>

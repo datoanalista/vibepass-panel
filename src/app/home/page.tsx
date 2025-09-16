@@ -1,6 +1,8 @@
 "use client";
-import React from 'react';
+import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import ProtectedRoute from '../../components/ProtectedRoute';
+import useAuth from '../../hooks/useAuth';
 import {
   Box,
   Container,
@@ -9,18 +11,26 @@ import {
   Card,
   CardContent,
   Stack,
-  Grid
+  Grid,
+  Menu,
+  MenuItem,
+  Chip
 } from '@mui/material';
 import {
   Dashboard as DashboardIcon,
   Event as EventIcon,
-  ArrowForward as ArrowForwardIcon
+  ArrowForward as ArrowForwardIcon,
+  AccountCircle as AccountCircleIcon,
+  ExitToApp as ExitToAppIcon
 } from '@mui/icons-material';
 
 const HomePage = () => {
   const router = useRouter();
+  const { user, logout } = useAuth();
+  const [anchorEl, setAnchorEl] = useState(null);
 
   return (
+    <ProtectedRoute>
     <Box sx={{ 
       minHeight: '100vh',
       background: '#1E293B',
@@ -52,11 +62,62 @@ const HomePage = () => {
               VibePass
             </Typography>
             
-            <img 
-              src="/vibepass-panel/vibepass.svg" 
-              alt="VibePass" 
-              style={{ width: 60, height: 60 }}
-            />
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              {user && (
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Typography sx={{ color: '#F8FAFC', fontSize: '14px' }}>
+                    {user.nombreCompleto}
+                  </Typography>
+                  <Chip
+                    label={user.tipo === 'admin' ? 'Admin' : 'Organizador'}
+                    size="small"
+                    sx={{
+                      backgroundColor: user.tipo === 'admin' ? '#EF4444' : '#10B981',
+                      color: 'white',
+                      fontSize: '12px'
+                    }}
+                  />
+                  <Button
+                    onClick={(e) => setAnchorEl(e.currentTarget)}
+                    sx={{
+                      color: '#F8FAFC',
+                      minWidth: 'auto',
+                      padding: '8px',
+                      '&:hover': {
+                        backgroundColor: 'rgba(255,255,255,0.1)',
+                        cursor: 'pointer'
+                      }
+                    }}
+                  >
+                    <AccountCircleIcon />
+                  </Button>
+                  <Menu
+                    anchorEl={anchorEl}
+                    open={Boolean(anchorEl)}
+                    onClose={() => setAnchorEl(null)}
+                    anchorOrigin={{
+                      vertical: 'bottom',
+                      horizontal: 'right',
+                    }}
+                    transformOrigin={{
+                      vertical: 'top',
+                      horizontal: 'right',
+                    }}
+                  >
+                    <MenuItem onClick={logout} sx={{ gap: 1 }}>
+                      <ExitToAppIcon fontSize="small" />
+                      Cerrar sesión
+                    </MenuItem>
+                  </Menu>
+                </Box>
+              )}
+              
+              <img 
+                src="/vibepass-panel/vibepass.svg" 
+                alt="VibePass" 
+                style={{ width: 60, height: 60 }}
+              />
+            </Box>
           </Box>
         </Container>
       </Box>
@@ -255,6 +316,7 @@ const HomePage = () => {
         </Container>
       </Box>
     </Box>
+    </ProtectedRoute>
   );
 };
 

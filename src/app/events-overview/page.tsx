@@ -1,9 +1,13 @@
+"use client";
 import EventsOverview from '../../components/EventsOverview';
+import ProtectedRoute from '../../components/ProtectedRoute';
 
 export default function EventsOverviewPage() {
   return (
-    <main>
-      <EventsOverview />
-    </main>
+    <ProtectedRoute>
+      <main>
+        <EventsOverview />
+      </main>
+    </ProtectedRoute>
   );
 }

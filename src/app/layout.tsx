@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Sistema de Gestión de Eventos",
+  title: "Vibepass Backoffice",
   description: "Plataforma completa para gestión de eventos",
 };
 

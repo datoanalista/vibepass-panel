@@ -6,8 +6,16 @@ export default function Home() {
   const router = useRouter();
 
   useEffect(() => {
-    // Redirigir automáticamente a /home
-    router.push('/home');
+    // Verificar si el usuario está autenticado
+    const token = sessionStorage.getItem('authToken');
+    
+    if (token) {
+      // Si está autenticado, redirigir al home
+      router.push('/home');
+    } else {
+      // Si no está autenticado, redirigir al login
+      router.push('/login');
+    }
   }, [router]);
 
   return (

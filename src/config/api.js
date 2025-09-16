@@ -17,8 +17,16 @@ const API_CONFIG = {
   
   // Endpoints específicos
   ENDPOINTS: {
+    // Autenticación
+    AUTH_LOGIN: process.env.NEXT_PUBLIC_API_AUTH_LOGIN_URL || `${BASE_URL}/api/dashboard/auth/login`,
+    AUTH_REGISTER: process.env.NEXT_PUBLIC_API_AUTH_REGISTER_URL || `${BASE_URL}/api/dashboard/auth/register`,
+    
+    // Admin
+    ADMIN_ORGANIZADORES: process.env.NEXT_PUBLIC_API_ADMIN_ORGANIZADORES_URL || `${BASE_URL}/api/dashboard/admin/organizadores`,
+    
     // Eventos
     EVENTS: process.env.NEXT_PUBLIC_API_EVENTS_URL || `${BASE_URL}/api/events`,
+    DASHBOARD_EVENTS: process.env.NEXT_PUBLIC_API_DASHBOARD_EVENTS_URL || `${BASE_URL}/api/dashboard/events`,
     EVENT_BY_ID: (id) => `${BASE_URL}/api/events/${id}`,
     
     // Borradores
@@ -48,8 +56,11 @@ const API_CONFIG = {
   REQUEST_CONFIG: {
     headers: {
       'Content-Type': 'application/json',
+      'Accept': 'application/json',
       'ngrok-skip-browser-warning': 'true', // Saltar advertencia de ngrok
     },
+    mode: 'cors',
+    credentials: 'same-origin',
     timeout: 10000, // 10 segundos
   },
   

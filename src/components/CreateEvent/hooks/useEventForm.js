@@ -1,7 +1,9 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
+import useAuth from '../../../hooks/useAuth';
 import API_CONFIG from '../../../config/api';
 
 export const useEventForm = () => {
+  const { user } = useAuth(); // Obtener usuario autenticado
   const [createEventStep, setCreateEventStep] = useState(1);
   const [isEditMode, setIsEditMode] = useState(false);
   const [editingEventId, setEditingEventId] = useState(null);
@@ -50,6 +52,21 @@ export const useEventForm = () => {
     rutEmpresa: '',
     permiteDevolucion: null
   });
+
+  // Auto-llenar datos del organizador cuando el usuario esté disponible
+  useEffect(() => {
+    if (user && !eventFormData.nombreOrganizador) {
+      console.log('🔄 Auto-llenando datos del organizador:', user);
+      setEventFormData(prev => ({
+        ...prev,
+        nombreOrganizador: user.nombreCompleto || '',
+        correoElectronico: user.email || '',
+        telefonoContacto: user.telefono || '',
+        nombreEmpresaColegio: user.organizacion || '',
+        rutEmpresa: user.rut || ''
+      }));
+    }
+  }, [user, eventFormData.nombreOrganizador]);
 
   // Función optimizada para mapear entradas
   const mapEntradas = useCallback((entradas) => {
@@ -121,8 +138,30 @@ export const useEventForm = () => {
           
           if (editingEventData) {
             const eventData = JSON.parse(editingEventData);
+            
+            // Debug: ver la estructura del eventData
+            console.log('🔍 DEBUG - eventData completo:', eventData);
+            console.log('🔍 DEBUG - eventData._id:', eventData._id);
+            console.log('🔍 DEBUG - tipo de _id:', typeof eventData._id);
+            
+            // Extraer el ID correctamente, manejando tanto string como objeto $oid
+            let eventId;
+            if (typeof eventData._id === 'string') {
+              eventId = eventData._id;
+            } else if (eventData._id && eventData._id.$oid) {
+              eventId = eventData._id.$oid;
+            } else if (eventData._id && typeof eventData._id === 'object') {
+              // Si es un objeto pero no tiene $oid, intentar convertir a string
+              eventId = eventData._id.toString();
+            } else {
+              console.error('❌ No se pudo extraer el ID del evento:', eventData._id);
+              eventId = null;
+            }
+            
+            console.log('🔍 DEBUG - eventId extraído:', eventId);
+            
             setIsEditMode(true);
-            setEditingEventId(eventData.id);
+            setEditingEventId(eventId);
             
             // Cargar datos del evento en el formulario (optimizado)
             console.log('⚡ Iniciando carga optimizada del evento...');
@@ -504,6 +543,9 @@ export const useEventForm = () => {
         estado: 'programado'
       },
 
+      // CRÍTICO: Asignar el creador del evento
+      createdBy: user?._id || null,
+
       entradas: eventFormData.entradas.map(entrada => ({
         id: entrada.id,
         tipoEntrada: entrada.tipoEntrada,
@@ -810,6 +852,23 @@ export const useEventForm = () => {
         nombre: eventData.informacionGeneral?.nombreEvento,
         organizador: eventData.organizador,
         configuracion: eventData.configuracion
+      });
+      
+      // Validar que tenemos un ID válido en modo edición
+      if (isEditMode && (!editingEventId || editingEventId === 'undefined' || editingEventId === 'null')) {
+        console.error('❌ ID de evento inválido:', {
+          isEditMode,
+          editingEventId,
+          typeOfId: typeof editingEventId
+        });
+        throw new Error('No se puede actualizar el evento: ID de evento no válido');
+      }
+      
+      // Debug adicional antes de hacer la petición
+      console.log('🔍 DEBUG - Antes de hacer petición:', {
+        isEditMode,
+        editingEventId,
+        url: isEditMode ? API_CONFIG.ENDPOINTS.EVENT_BY_ID(editingEventId) : API_CONFIG.ENDPOINTS.EVENTS
       });
       
       // Determinar la URL y método según el modo

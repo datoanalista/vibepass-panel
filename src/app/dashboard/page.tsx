@@ -1,9 +1,13 @@
+"use client";
 import EventAdminDashboard from '../../components/EventAdminDashboard';
+import ProtectedRoute from '../../components/ProtectedRoute';
 
 export default function DashboardPage() {
   return (
-    <main>
-      <EventAdminDashboard />
-    </main>
+    <ProtectedRoute>
+      <main>
+        <EventAdminDashboard />
+      </main>
+    </ProtectedRoute>
   );
 }

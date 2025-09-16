@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import API_CONFIG from '../config/api';
+import useAuth from '../hooks/useAuth';
 
 // Función para determinar el estado del evento según la hora actual
 const getEventStatus = (event) => {
@@ -85,7 +86,10 @@ import {
   TableCell,
   TableContainer,
   TableHead,
-  TableRow
+  TableRow,
+  InputLabel,
+  Chip,
+  Menu
 } from '@mui/material';
 import {
   Search as SearchIcon,
@@ -105,7 +109,8 @@ import {
   Add as AddIcon,
   Visibility as VisibilityIcon,
   ExpandMore as ExpandMoreIcon,
-  ExpandLess as ExpandLessIcon
+  ExpandLess as ExpandLessIcon,
+  ExitToApp as ExitToAppIcon
 } from '@mui/icons-material';
 import Usuarios from './Usuarios';
 import AddUserForm from './AddUserForm';
@@ -285,12 +290,17 @@ const CalendarComponent = ({ selectedEventId }) => {
 };
 
 const EventAdminDashboard = () => {
+  const { user, logout, isAdmin } = useAuth();
   const [activeView, setActiveView] = useState('dashboard');
   const [selectedEventId, setSelectedEventId] = useState('');
   const [mounted, setMounted] = useState(false);
   
   const [events, setEvents] = useState([]);
   const [eventsLoading, setEventsLoading] = useState(false);
+  const [organizadores, setOrganizadores] = useState([]);
+  const [selectedOrganizadorId, setSelectedOrganizadorId] = useState('');
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const userMenuRef = useRef(null);
   
   const [showAddInventoryForm, setShowAddInventoryForm] = useState(false);
   const [showAddUserForm, setShowAddUserForm] = useState(false);
@@ -323,14 +333,52 @@ const EventAdminDashboard = () => {
   });
   const [createInventoryLoading, setCreateInventoryLoading] = useState(false);
 
+  // Función para obtener lista de organizadores (solo para admins)
+  const fetchOrganizadores = async () => {
+    if (!isAdmin()) return;
+    
+    try {
+      const token = sessionStorage.getItem('authToken');
+      const headers = {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      };
+      
+      const response = await fetch(API_CONFIG.ENDPOINTS.ADMIN_ORGANIZADORES, {
+        headers
+      });
+      
+      if (response.ok) {
+        const result = await response.json();
+        setOrganizadores(result.data || []);
+      }
+    } catch (error) {
+      console.error('Error fetching organizadores:', error);
+    }
+  };
 
-  const fetchEvents = async () => {
+  const fetchEvents = async (organizadorId = null) => {
     try {
       setEventsLoading(true);
       
-      // Agregar parámetros para obtener más eventos
-      const url = `${API_CONFIG.ENDPOINTS.EVENTS}?limit=500&page=1`;
-      const response = await fetch(url, API_CONFIG.REQUEST_CONFIG);
+      let url = `${API_CONFIG.ENDPOINTS.DASHBOARD_EVENTS}?limit=500&page=1`;
+      
+      // Si es admin y se seleccionó un organizador específico, filtrar por organizador
+      if (isAdmin() && organizadorId) {
+        url += `&organizadorId=${organizadorId}`;
+      }
+      
+      // Agregar token de autorización
+      const token = sessionStorage.getItem('authToken');
+      const headers = {
+        ...API_CONFIG.REQUEST_CONFIG.headers,
+        'Authorization': `Bearer ${token}`
+      };
+      
+      const response = await fetch(url, {
+        ...API_CONFIG.REQUEST_CONFIG,
+        headers
+      });
       const result = await response.json();
       
       if (response.ok) {
@@ -347,17 +395,11 @@ const EventAdminDashboard = () => {
           eventsList = result.events;
         }
         
-        // Log temporal para ver la estructura de los eventos
-        if (eventsList.length > 0) {
-          console.log('📊 Estructura del primer evento:', eventsList[0]);
-          console.log('📊 Estado en informacionGeneral:', eventsList[0].informacionGeneral?.estado);
-          console.log('📊 Estado directo:', eventsList[0].estado);
-        }
         
         setEvents(eventsList);
         
         if (eventsList.length > 0 && !selectedEventId) {
-          setSelectedEventId(eventsList[0].id);
+          setSelectedEventId(eventsList[0]._id);
         }
       } else {
         console.error('❌ API Error:', result.message || 'Error desconocido');
@@ -549,6 +591,28 @@ const EventAdminDashboard = () => {
   useEffect(() => {
     setMounted(true);
     fetchEvents();
+    if (isAdmin()) {
+      fetchOrganizadores();
+    }
+  }, []);
+
+  // Efecto para filtrar eventos cuando cambia el organizador seleccionado
+  useEffect(() => {
+    if (mounted && isAdmin() && selectedOrganizadorId !== '') {
+      fetchEvents(selectedOrganizadorId || null);
+    }
+  }, [selectedOrganizadorId, mounted]);
+
+  // Cerrar menú de usuario cuando se hace clic fuera
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(event.target)) {
+        setUserMenuOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
   if (!mounted) {
@@ -556,7 +620,7 @@ const EventAdminDashboard = () => {
   }
 
 
-  const selectedEvent = events.find(event => event.id === selectedEventId);
+  const selectedEvent = events.find(event => event._id === selectedEventId);
   const selectedEventName = selectedEvent?.informacionGeneral?.nombreEvento || 'Seleccionar evento';
   
   // Formatear el nombre del evento seleccionado con fecha
@@ -693,46 +757,79 @@ const EventAdminDashboard = () => {
             <NotificationsIcon />
           </IconButton>
 
-          <Stack direction="row" alignItems="center" spacing={1.5} sx={{ ml: 2 }}>
-            <Avatar 
-              sx={{ 
-                width: 40, 
-                height: 40,
-                bgcolor: '#00BCD4',
-                fontSize: '16px',
-                fontWeight: 600
-              }}
-            >
-              JO
-            </Avatar>
-            <Box>
-              <Typography sx={{
-                color: 'white',
-                fontSize: '14px',
-                fontWeight: 600,
-                lineHeight: 1.2
-              }}>
-                José Ortiz
-              </Typography>
-              <Typography sx={{
-                color: '#B0BEC5',
-                fontSize: '12px',
-                lineHeight: 1.2
-              }}>
-                Administrador
-              </Typography>
-            </Box>
-          </Stack>
+          {user && (
+            <Stack direction="row" alignItems="center" spacing={1.5} sx={{ ml: 2 }}>
+              <Avatar 
+                sx={{ 
+                  width: 40, 
+                  height: 40,
+                  bgcolor: user.tipo === 'admin' ? '#EF4444' : '#10B981',
+                  fontSize: '16px',
+                  fontWeight: 600
+                }}
+              >
+                {user.nombreCompleto?.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()}
+              </Avatar>
+              <Box>
+                <Typography sx={{
+                  color: 'white',
+                  fontSize: '14px',
+                  fontWeight: 600,
+                  lineHeight: 1.2
+                }}>
+                  {user.nombreCompleto}
+                </Typography>
+                <Typography sx={{
+                  color: '#B0BEC5',
+                  fontSize: '12px',
+                  lineHeight: 1.2
+                }}>
+                  {user.tipo === 'admin' ? 'Administrador' : 'Organizador'}
+                </Typography>
+              </Box>
+            </Stack>
+          )}
 
-          <IconButton sx={{ 
-            color: 'white',
-            ml: 1,
-            '&:hover': {
-              backgroundColor: 'rgba(255, 255, 255, 0.1)'
-            }
-          }}>
+          <IconButton 
+            onClick={(e) => setUserMenuAnchor(e.currentTarget)}
+            sx={{ 
+              color: 'white',
+              ml: 1,
+              '&:hover': {
+                backgroundColor: 'rgba(255, 255, 255, 0.1)'
+              }
+            }}
+          >
             <MenuIcon />
           </IconButton>
+          
+          {/* Menu del usuario */}
+          <Menu
+            anchorEl={userMenuAnchor}
+            open={Boolean(userMenuAnchor)}
+            onClose={() => setUserMenuAnchor(null)}
+            anchorOrigin={{
+              vertical: 'bottom',
+              horizontal: 'right',
+            }}
+            transformOrigin={{
+              vertical: 'top',
+              horizontal: 'right',
+            }}
+            sx={{
+              '& .MuiPaper-root': {
+                minWidth: '160px',
+                boxShadow: '0px 4px 12px rgba(0, 0, 0, 0.15)',
+                borderRadius: '8px',
+                mt: 1
+              }
+            }}
+          >
+            <MenuItem onClick={logout} sx={{ gap: 1, color: '#EF4444' }}>
+              <ExitToAppIcon fontSize="small" />
+              Cerrar sesión
+            </MenuItem>
+          </Menu>
         </Stack>
       </Box>
     </Box>
@@ -966,12 +1063,12 @@ const EventAdminDashboard = () => {
               ) : (
                 sortedEvents.map((event) => {
                   const { displayText, status } = getEventDisplayInfo(event);
-                  const isSelected = event.id === selectedEventId;
+                  const isSelected = event._id === selectedEventId;
                   
                   return (
                     <Box
-                      key={event.id} 
-                      onClick={() => handleEventSelect(event.id)}
+                      key={event._id} 
+                      onClick={() => handleEventSelect(event._id)}
                       sx={{
                         display: 'flex',
                         alignItems: 'flex-start',
@@ -1064,13 +1161,16 @@ const EventAdminDashboard = () => {
         maxWidth: '1200px',
         mx: 'auto'
       }}>
-        <Typography sx={{
-          fontSize: '18px',
-          fontWeight: 600,
-          color: '#374151'
-        }}>
-          Evento - "{getSelectedEventDisplayName()}"
-        </Typography>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+          <Typography sx={{
+            fontSize: '18px',
+            fontWeight: 600,
+            color: '#374151'
+          }}>
+            Evento - "{getSelectedEventDisplayName()}"
+          </Typography>
+
+        </Box>
 
         <EventDropdown />
       </Box>
@@ -2552,9 +2652,215 @@ const EventAdminDashboard = () => {
      );
    };
 
+  // Header extendido para Dashboard que incluye la navegación
+  const DashboardHeader = () => (
+    <Box sx={{
+      width: '100%',
+      height: '85px',
+      bgcolor: '#1B2735',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      px: 3,
+      boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.15)',
+      position: 'relative'
+    }}>
+      {/* Left side - Logo y Navigation */}
+      <Box sx={{ display: 'flex', alignItems: 'center', flex: '0 0 auto', gap: 3 }}>
+        <Link href="/" style={{ textDecoration: 'none' }}>
+          <Box sx={{ 
+            display: 'flex',
+            alignItems: 'center',
+            cursor: 'pointer',
+            '&:hover': {
+              opacity: 0.8
+            }
+          }}>
+            <img 
+              src="/vibepass-panel/vibepass.svg" 
+              alt="VibePass" 
+              style={{ 
+                height: '32px', 
+                width: 'auto'
+              }} 
+            />
+          </Box>
+        </Link>
+
+        {/* Navigation Buttons */}
+        <Stack direction="row" spacing={1}>
+          <Button
+            variant={activeView === 'dashboard' ? 'contained' : 'text'}
+            onClick={() => setActiveView('dashboard')}
+            startIcon={<DashboardIcon />}
+            sx={{
+              color: activeView === 'dashboard' ? 'white' : '#B0BEC5',
+              backgroundColor: activeView === 'dashboard' ? 'rgba(255, 255, 255, 0.1)' : 'transparent',
+              '&:hover': {
+                backgroundColor: 'rgba(255, 255, 255, 0.1)'
+              },
+              textTransform: 'none',
+              fontWeight: 500
+            }}
+          >
+            Dashboard
+          </Button>
+
+          <Button
+            variant={activeView === 'usuarios' ? 'contained' : 'text'}
+            onClick={() => setActiveView('usuarios')}
+            startIcon={<PeopleIcon />}
+            sx={{
+              color: activeView === 'usuarios' ? 'white' : '#B0BEC5',
+              backgroundColor: activeView === 'usuarios' ? 'rgba(255, 255, 255, 0.1)' : 'transparent',
+              '&:hover': {
+                backgroundColor: 'rgba(255, 255, 255, 0.1)'
+              },
+              textTransform: 'none',
+              fontWeight: 500
+            }}
+          >
+            Usuarios
+          </Button>
+
+          <Button
+            variant={activeView === 'inventario' ? 'contained' : 'text'}
+            onClick={() => setActiveView('inventario')}
+            startIcon={<InventoryIcon />}
+            sx={{
+              color: activeView === 'inventario' ? 'white' : '#B0BEC5',
+              backgroundColor: activeView === 'inventario' ? 'rgba(255, 255, 255, 0.1)' : 'transparent',
+              '&:hover': {
+                backgroundColor: 'rgba(255, 255, 255, 0.1)'
+              },
+              textTransform: 'none',
+              fontWeight: 500
+            }}
+          >
+            Inventario
+          </Button>
+        </Stack>
+      </Box>
+
+      {/* Right side - User info and icons (igual que Header.jsx) */}
+      <Stack direction="row" alignItems="center" spacing={2} sx={{ flex: '0 0 auto' }}>
+        {/* Search Icon */}
+        <IconButton sx={{ 
+          color: 'white',
+          '&:hover': {
+            backgroundColor: 'rgba(255, 255, 255, 0.1)'
+          }
+        }}>
+          <SearchIcon />
+        </IconButton>
+
+        {/* Notifications Icon */}
+        <IconButton sx={{ 
+          color: 'white',
+          '&:hover': {
+            backgroundColor: 'rgba(255, 255, 255, 0.1)'
+          }
+        }}>
+          <NotificationsIcon />
+        </IconButton>
+
+        {/* User Info */}
+        {user && (
+          <Stack direction="row" alignItems="center" spacing={1.5} sx={{ ml: 2 }}>
+            <Avatar 
+              sx={{ 
+                width: 40, 
+                height: 40,
+                bgcolor: user.tipo === 'admin' ? '#EF4444' : '#10B981',
+                fontSize: '16px',
+                fontWeight: 600
+              }}
+            >
+              {user.nombreCompleto?.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()}
+            </Avatar>
+            <Box>
+              <Typography sx={{
+                color: 'white',
+                fontSize: '14px',
+                fontWeight: 600,
+                lineHeight: 1.2
+              }}>
+                {user.nombreCompleto}
+              </Typography>
+              <Typography sx={{
+                color: '#B0BEC5',
+                fontSize: '12px',
+                lineHeight: 1.2
+              }}>
+                {user.tipo === 'admin' ? 'Administrador' : 'Organizador'}
+              </Typography>
+            </Box>
+          </Stack>
+        )}
+
+        {/* Menu Dropdown Personalizado */}
+        <Box sx={{ position: 'relative' }} ref={userMenuRef}>
+          <IconButton 
+            onClick={() => setUserMenuOpen(!userMenuOpen)}
+            sx={{ 
+              color: 'white',
+              ml: 1,
+              '&:hover': {
+                backgroundColor: 'rgba(255, 255, 255, 0.1)'
+              }
+            }}
+          >
+            <MenuIcon />
+          </IconButton>
+          
+          {/* Dropdown Menu */}
+          {userMenuOpen && (
+            <Box sx={{
+              position: 'absolute',
+              top: '100%',
+              right: 0,
+              mt: 1,
+              backgroundColor: 'white',
+              border: '1px solid #E5E7EB',
+              borderRadius: '8px',
+              boxShadow: '0px 4px 12px rgba(0, 0, 0, 0.15)',
+              zIndex: 1000,
+              minWidth: '160px',
+              overflow: 'hidden'
+            }}>
+              <Box
+                onClick={() => {
+                  logout();
+                  setUserMenuOpen(false);
+                }}
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 1,
+                  px: 2,
+                  py: 1.5,
+                  cursor: 'pointer',
+                  color: '#EF4444',
+                  '&:hover': {
+                    backgroundColor: '#F9FAFB'
+                  }
+                }}
+              >
+                <ExitToAppIcon fontSize="small" />
+                <Typography sx={{ fontSize: '14px' }}>
+                  Cerrar sesión
+                </Typography>
+              </Box>
+            </Box>
+          )}
+        </Box>
+      </Stack>
+    </Box>
+  );
+
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: '#F5F7FA' }}>
-      <Header />
+      <DashboardHeader />
       <EventSelector />
       
       {showAddInventoryForm ? (
