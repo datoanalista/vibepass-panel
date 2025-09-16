@@ -3,6 +3,13 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import ProtectedRoute from '../../components/ProtectedRoute';
 import useAuth from '../../hooks/useAuth';
+
+// Interfaz para el tipo de usuario
+interface User {
+  nombreCompleto?: string;
+  tipo?: 'admin' | 'organizador';
+  [key: string]: any;
+}
 import {
   Box,
   Container,
@@ -27,7 +34,13 @@ import {
 const HomePage = () => {
   const router = useRouter();
   const { user, logout } = useAuth();
-  const [anchorEl, setAnchorEl] = useState(null);
+  const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
+
+  // Helper para obtener datos del usuario de forma segura
+  const getUserData = () => {
+    if (!user || typeof user !== 'object') return null;
+    return user as User;
+  };
 
   return (
     <ProtectedRoute>
@@ -63,16 +76,16 @@ const HomePage = () => {
             </Typography>
             
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-              {user && (
+              {getUserData() && (
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                   <Typography sx={{ color: '#F8FAFC', fontSize: '14px' }}>
-                    {user?.nombreCompleto || 'Usuario'}
+                    {getUserData()?.nombreCompleto || 'Usuario'}
                   </Typography>
                   <Chip
-                    label={user?.tipo === 'admin' ? 'Admin' : 'Organizador'}
+                    label={getUserData()?.tipo === 'admin' ? 'Admin' : 'Organizador'}
                     size="small"
                     sx={{
-                      backgroundColor: user?.tipo === 'admin' ? '#EF4444' : '#10B981',
+                      backgroundColor: getUserData()?.tipo === 'admin' ? '#EF4444' : '#10B981',
                       color: 'white',
                       fontSize: '12px'
                     }}
