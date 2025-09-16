@@ -66,13 +66,13 @@ const HomePage = () => {
               {user && (
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                   <Typography sx={{ color: '#F8FAFC', fontSize: '14px' }}>
-                    {user.nombreCompleto}
+                    {user?.nombreCompleto || 'Usuario'}
                   </Typography>
                   <Chip
-                    label={user.tipo === 'admin' ? 'Admin' : 'Organizador'}
+                    label={user?.tipo === 'admin' ? 'Admin' : 'Organizador'}
                     size="small"
                     sx={{
-                      backgroundColor: user.tipo === 'admin' ? '#EF4444' : '#10B981',
+                      backgroundColor: user?.tipo === 'admin' ? '#EF4444' : '#10B981',
                       color: 'white',
                       fontSize: '12px'
                     }}
