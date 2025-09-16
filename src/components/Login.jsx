@@ -116,19 +116,6 @@ const Login = () => {
       padding: '20px',
       gap: '30px'
     }}>
-      {/* Logo centrado arriba */}
-      <Box sx={{
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center'
-      }}>
-        <img 
-          src="/iconvibepass.png" 
-          alt="Vibepass" 
-          style={{ width: '120px', height: '120px' }}
-        />
-      </Box>
-
       {/* Formulario de Login */}
       <Box
         component="form"

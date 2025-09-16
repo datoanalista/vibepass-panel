@@ -224,19 +224,6 @@ const Register = ({ onBack }) => {
       </Box>
 
       {/* Icono de la compañía */}
-      <Box sx={{
-        position: 'absolute',
-        top: '10px',
-        right: '40px',
-        display: 'flex',
-        alignItems: 'center'
-      }}>
-        <img 
-          src="/iconvibepass.png" 
-          alt="VibePass" 
-          style={{ width: '160px', height: '160px' }}
-        />
-      </Box>
 
       {/* Formulario de Registro */}
       <Box
