@@ -1,6 +1,5 @@
 "use client";
 import React, { useState } from 'react';
-import Image from 'next/image';
 import {
   Box,
   Typography,
@@ -232,12 +231,10 @@ const Register = ({ onBack }) => {
         display: 'flex',
         alignItems: 'center'
       }}>
-        <Image 
+        <img 
           src="/iconvibepass.png" 
           alt="VibePass" 
-          width={160} 
-          height={160}
-          priority
+          style={{ width: '160px', height: '160px' }}
         />
       </Box>
 

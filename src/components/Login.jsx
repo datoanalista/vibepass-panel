@@ -12,7 +12,6 @@ import {
   InputAdornment,
   IconButton
 } from '@mui/material';
-import Image from 'next/image';
 import { Visibility, VisibilityOff } from '@mui/icons-material';
 import Register from './Register';
 import ErrorModal from './ErrorModal';
@@ -123,12 +122,10 @@ const Login = () => {
         justifyContent: 'center',
         alignItems: 'center'
       }}>
-        <Image 
+        <img 
           src="/iconvibepass.png" 
           alt="Vibepass" 
-          width={120} 
-          height={120}
-          priority
+          style={{ width: '120px', height: '120px' }}
         />
       </Box>
 
