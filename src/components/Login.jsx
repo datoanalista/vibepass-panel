@@ -124,10 +124,11 @@ const Login = () => {
         alignItems: 'center'
       }}>
         <Image 
-          src="/images/logo_icon_vibepass.png" 
+          src="/logo_icon_vibepass.png" 
           alt="Vibepass" 
           width={120} 
           height={120}
+          priority
         />
       </Box>
 
