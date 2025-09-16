@@ -233,7 +233,7 @@ const Register = ({ onBack }) => {
         alignItems: 'center'
       }}>
         <Image 
-          src="/logo_icon_vibepass.png" 
+          src="/iconvibepass.png" 
           alt="VibePass" 
           width={160} 
           height={160}

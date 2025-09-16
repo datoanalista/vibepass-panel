@@ -124,7 +124,7 @@ const Login = () => {
         alignItems: 'center'
       }}>
         <Image 
-          src="/logo_icon_vibepass.png" 
+          src="/iconvibepass.png" 
           alt="Vibepass" 
           width={120} 
           height={120}
