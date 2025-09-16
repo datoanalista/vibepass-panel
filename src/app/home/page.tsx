@@ -8,7 +8,9 @@ import useAuth from '../../hooks/useAuth';
 interface User {
   nombreCompleto?: string;
   tipo?: 'admin' | 'organizador';
-  [key: string]: any;
+  _id?: string;
+  email?: string;
+  organizacion?: string;
 }
 import {
   Box,
@@ -17,12 +19,11 @@ import {
   Button,
   Card,
   CardContent,
-  Stack,
-  Grid,
   Menu,
   MenuItem,
   Chip
 } from '@mui/material';
+import Image from 'next/image';
 import {
   Dashboard as DashboardIcon,
   Event as EventIcon,
@@ -125,10 +126,11 @@ const HomePage = () => {
                 </Box>
               )}
               
-              <img 
+              <Image 
                 src="/vibepass-panel/vibepass.svg" 
                 alt="VibePass" 
-                style={{ width: 60, height: 60 }}
+                width={60}
+                height={60}
               />
             </Box>
           </Box>

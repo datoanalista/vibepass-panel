@@ -522,12 +522,13 @@ export const useEventForm = () => {
   }, []);
 
   const generateEventJSON = useCallback(() => {
-    const generateCloudinaryUrl = (file, type = 'events') => {
-      if (!file) return null;
-      const timestamp = Date.now();
-      const cleanName = file.name.replace(/[^a-zA-Z0-9.]/g, '_').toLowerCase();
-      return `https://res.cloudinary.com/tu-cloud-name/image/upload/v${timestamp}/${type}/${cleanName}`;
-    };
+    // Función para generar URL de Cloudinary (no se usa actualmente)
+    // const generateCloudinaryUrl = (file, type = 'events') => {
+    //   if (!file) return null;
+    //   const timestamp = Date.now();
+    //   const cleanName = file.name.replace(/[^a-zA-Z0-9.]/g, '_').toLowerCase();
+    //   return `https://res.cloudinary.com/tu-cloud-name/image/upload/v${timestamp}/${type}/${cleanName}`;
+    // };
 
     
     const eventData = {
@@ -642,7 +643,7 @@ export const useEventForm = () => {
     };
 
     return eventData;
-  }, [eventFormData]);
+  }, [eventFormData, user?._id]);
 
   const uploadBanner = useCallback(async (file) => {
     if (!file) return;
