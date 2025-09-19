@@ -313,7 +313,8 @@ const EventAdminDashboard = () => {
     correoElectronico: '',
     rutOId: '',
     telefonoContacto: '',
-    rol: 'Administrador'
+    rol: 'Validador',
+    password: ''
   });
   const [createUserLoading, setCreateUserLoading] = useState(false);
   const [showUserSuccessModal, setShowUserSuccessModal] = useState(false);
@@ -449,16 +450,36 @@ const EventAdminDashboard = () => {
           correoElectronico: '',
           rutOId: '',
           telefonoContacto: '',
-          rol: 'Administrador'
+          rol: 'Validador',
+          password: ''
         });
         setShowAddUserForm(false);
         setShowUserSuccessModal(true);
       } else {
-        throw new Error(result.message || 'Error al crear el usuario');
+        // Manejar diferentes tipos de errores
+        if (response.status === 400) {
+          // Error 400: Errores de validación (RUT duplicado, datos inválidos, etc.)
+          console.log('ℹ️ Validación del servidor:', result.message || 'Datos inválidos');
+          setUserErrorMessage(result.message || 'Los datos ingresados no son válidos. Por favor, revise la información.');
+        } else if (response.status >= 500) {
+          // Error 500+: Errores del servidor
+          console.error('❌ Error del servidor:', result.message || 'Error interno del servidor');
+          setUserErrorMessage('Error interno del servidor. Por favor, intente nuevamente más tarde.');
+        } else {
+          // Otros errores
+          console.warn('⚠️ Error inesperado:', result.message || 'Error desconocido');
+          setUserErrorMessage(result.message || 'Error al crear el usuario. Por favor, intente nuevamente.');
+        }
+        setShowUserErrorModal(true);
       }
     } catch (error) {
-      console.error('❌ Error al crear usuario:', error);
-      setUserErrorMessage(error.message);
+      // Errores de red o conexión
+      console.error('❌ Error de conexión:', error);
+      if (error.name === 'TypeError' && error.message.includes('fetch')) {
+        setUserErrorMessage('Error de conexión. Por favor, verifique su conexión a internet.');
+      } else {
+        setUserErrorMessage('Error inesperado. Por favor, intente nuevamente.');
+      }
       setShowUserErrorModal(true);
     } finally {
       setCreateUserLoading(false);
@@ -473,7 +494,8 @@ const EventAdminDashboard = () => {
       correoElectronico: usuario.correoElectronico || '',
       rutOId: usuario.rutOId || '',
       telefonoContacto: usuario.telefonoContacto || '',
-      rol: usuario.rol || 'Administrador'
+      rol: usuario.rol || 'Validador',
+      password: usuario.password || ''
     });
     setShowEditUserForm(true);
   };
@@ -499,16 +521,38 @@ const EventAdminDashboard = () => {
           correoElectronico: '',
           rutOId: '',
           telefonoContacto: '',
-          rol: 'Administrador'
+          rol: 'Validador',
+          password: ''
         });
         setShowEditUserForm(false);
         setEditingUser(null);
+        setShowUserSuccessModal(true);
+        setCreatedUserName(userFormData.nombreCompleto);
       } else {
-        throw new Error(result.message || 'Error al actualizar el usuario');
+        // Manejar diferentes tipos de errores
+        if (response.status === 400) {
+          // Error 400: Errores de validación (RUT duplicado, datos inválidos, etc.)
+          console.log('ℹ️ Validación del servidor:', result.message || 'Datos inválidos');
+          setUserErrorMessage(result.message || 'Los datos ingresados no son válidos. Por favor, revise la información.');
+        } else if (response.status >= 500) {
+          // Error 500+: Errores del servidor
+          console.error('❌ Error del servidor:', result.message || 'Error interno del servidor');
+          setUserErrorMessage('Error interno del servidor. Por favor, intente nuevamente más tarde.');
+        } else {
+          // Otros errores
+          console.warn('⚠️ Error inesperado:', result.message || 'Error desconocido');
+          setUserErrorMessage(result.message || 'Error al actualizar el usuario. Por favor, intente nuevamente.');
+        }
+        setShowUserErrorModal(true);
       }
     } catch (error) {
-      console.error('❌ Error al actualizar usuario:', error);
-      setUserErrorMessage(error.message);
+      // Errores de red o conexión
+      console.error('❌ Error de conexión:', error);
+      if (error.name === 'TypeError' && error.message.includes('fetch')) {
+        setUserErrorMessage('Error de conexión. Por favor, verifique su conexión a internet.');
+      } else {
+        setUserErrorMessage('Error inesperado. Por favor, intente nuevamente.');
+      }
       setShowUserErrorModal(true);
     } finally {
       setCreateUserLoading(false);

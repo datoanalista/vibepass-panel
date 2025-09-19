@@ -1,5 +1,5 @@
 "use client";
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
   Box,
   Card,
@@ -8,9 +8,6 @@ import {
   Button,
   Typography,
   Stack,
-  Select,
-  MenuItem,
-  FormControl,
   Container
 } from '@mui/material';
 
@@ -22,16 +19,35 @@ const AddUserForm = ({
   onCancel,
   isEditing = false
 }) => {
-  // Función simple para manejar cambios en el RUT - sin validación
+  // Función para generar contraseña automáticamente basada en el RUT
+  const generatePasswordFromRUT = (rut) => {
+    if (!rut) return '';
+    // Remover puntos y guión del RUT
+    const cleanRUT = rut.replace(/[.-]/g, '');
+    // Tomar los primeros 6 dígitos
+    return cleanRUT.substring(0, 6);
+  };
+
+  // Función para manejar cambios en el RUT y generar contraseña automáticamente
   const handleRUTChange = (value) => {
     handleUserFormChange('rutOId', value);
+    // Generar contraseña automáticamente
+    const password = generatePasswordFromRUT(value);
+    handleUserFormChange('password', password);
   };
+
+  // Establecer rol como "Validador" por defecto al montar el componente
+  useEffect(() => {
+    if (!isEditing && userFormData.rol !== 'Validador') {
+      handleUserFormChange('rol', 'Validador');
+    }
+  }, [isEditing, userFormData.rol, handleUserFormChange]);
   return (
     <Box sx={{ bgcolor: '#F5F7FA', minHeight: '100vh', py: 3 }}>
       <Container maxWidth="lg">
         <Box sx={{ mb: 3 }}>
           <Typography variant="body1" sx={{ color: '#6B7280', fontSize: '14px' }}>
-            Completa la información y define nivel de acceso en la plataforma
+            Completa la información para crear un nuevo validador
           </Typography>
         </Box>
 
@@ -57,7 +73,7 @@ const AddUserForm = ({
                 m: 0
               }}
             >
-              {isEditing ? 'Editar Usuario' : 'Datos del Organizador'}
+              {isEditing ? 'Editar Usuario' : 'Datos del Validador'}
             </Typography>
           </Box>
           
@@ -71,10 +87,10 @@ const AddUserForm = ({
           }}>
             <CardContent sx={{ p: 3 }}>
               <Stack spacing={3}>
-                {/* Nombre completo del usuario */}
+                {/* Nombre completo del validador */}
                 <Box>
                   <Typography variant="subtitle1" sx={{ mb: 1, fontWeight: 500, color: '#374151', fontSize: '14px' }}>
-                    Nombre completo del usuario
+                    Nombre completo del validador
                   </Typography>
                   <TextField
                     fullWidth
@@ -194,39 +210,42 @@ const AddUserForm = ({
                   />
                 </Box>
 
-                {/* Seleccionar rol */}
+                {/* Contraseña generada automáticamente */}
                 <Box>
                   <Typography variant="subtitle1" sx={{ mb: 1, fontWeight: 500, color: '#374151', fontSize: '14px' }}>
-                    Seleccionar rol
+                    Contraseña (generada automáticamente)
                   </Typography>
-                  <FormControl fullWidth>
-                    <Select
-                      value={userFormData.rol}
-                      onChange={(e) => handleUserFormChange('rol', e.target.value)}
-                      sx={{
-                        '& .MuiOutlinedInput-root': {
-                          borderRadius: '10px',
-                          backgroundColor: '#FFFFFF',
-                          boxShadow: '0px 4px 4px 0px rgba(0, 0, 0, 0.25)',
-                          '& fieldset': {
-                            border: 'none'
-                          },
-                          '&:hover': {
-                            boxShadow: '0px 6px 6px 0px rgba(0, 0, 0, 0.3)'
-                          },
-                          '&.Mui-focused': {
-                            boxShadow: '0px 4px 4px 0px rgba(0, 0, 0, 0.25)',
-                            border: '2px solid #2E7CE4'
-                          }
+                  <TextField
+                    fullWidth
+                    type="text"
+                    value={userFormData.password || ''}
+                    placeholder="Se generará automáticamente con el RUT"
+                    disabled
+                    sx={{
+                      '& .MuiOutlinedInput-root': {
+                        borderRadius: '10px',
+                        backgroundColor: '#F3F4F6',
+                        boxShadow: '0px 4px 4px 0px rgba(0, 0, 0, 0.25)',
+                        '& fieldset': {
+                          border: 'none'
+                        },
+                        '&.Mui-disabled': {
+                          backgroundColor: '#F3F4F6',
+                          color: '#6B7280'
                         }
-                      }}
-                    >
-                      <MenuItem value="Administrador">Administrador</MenuItem>
-                      <MenuItem value="Organizador">Organizador</MenuItem>
-                      <MenuItem value="Validador">Validador</MenuItem>
-                      <MenuItem value="Comprador">Comprador</MenuItem>
-                    </Select>
-                  </FormControl>
+                      }
+                    }}
+                  />
+                  <Typography variant="caption" sx={{ color: '#6B7280', fontSize: '12px', mt: 0.5, display: 'block' }}>
+                    La contraseña se genera automáticamente con los primeros 6 dígitos del RUT
+                  </Typography>
+                </Box>
+
+                {/* Rol fijo como Validador - Campo oculto */}
+                <Box sx={{ display: 'none' }}>
+                  <Typography variant="subtitle1" sx={{ mb: 1, fontWeight: 500, color: '#374151', fontSize: '14px' }}>
+                    Rol: Validador
+                  </Typography>
                 </Box>
               </Stack>
             </CardContent>
