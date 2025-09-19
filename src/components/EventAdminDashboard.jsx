@@ -399,8 +399,14 @@ const EventAdminDashboard = () => {
         
         setEvents(eventsList);
         
-        if (eventsList.length > 0 && !selectedEventId) {
+        // Siempre seleccionar el primer evento de la nueva lista
+        // Esto asegura que cuando cambian los eventos (ej: cambio de organizador)
+        // se seleccione un evento válido de la lista actual
+        if (eventsList.length > 0) {
           setSelectedEventId(eventsList[0]._id);
+        } else {
+          // Si no hay eventos, limpiar la selección
+          setSelectedEventId('');
         }
       } else {
         console.error('❌ API Error:', result.message || 'Error desconocido');
