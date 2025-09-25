@@ -1251,7 +1251,7 @@ const EventAdminDashboard = () => {
             fontWeight: 600,
             color: '#374151'
           }}>
-            Evento - <em>Seleccione un evento...</em>
+            Evento - <em>{selectedEvent?.informacionGeneral?.nombreEvento || 'Seleccione un evento...'}</em>
           </Typography>
 
         </Box>
