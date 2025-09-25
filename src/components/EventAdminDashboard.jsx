@@ -474,6 +474,12 @@ const EventAdminDashboard = () => {
         });
         setShowAddUserForm(false);
         setShowUserSuccessModal(true);
+        
+        // Refrescar la lista de usuarios después de crear uno exitosamente
+        // Esto es crítico para que se muestren en producción
+        setTimeout(() => {
+          window.location.reload();
+        }, 2000); // Recargar después de 2 segundos para que el usuario vea el modal de éxito
       } else {
         // Manejar diferentes tipos de errores
         if (response.status === 400) {
@@ -547,6 +553,11 @@ const EventAdminDashboard = () => {
         setEditingUser(null);
         setShowUserSuccessModal(true);
         setCreatedUserName(userFormData.nombreCompleto);
+        
+        // Refrescar la lista de usuarios después de actualizar uno exitosamente
+        setTimeout(() => {
+          window.location.reload();
+        }, 2000);
       } else {
         // Manejar diferentes tipos de errores
         if (response.status === 400) {
