@@ -380,7 +380,18 @@ const EventAdminDashboard = () => {
         ...API_CONFIG.REQUEST_CONFIG,
         headers
       });
-      const result = await response.json();
+      
+      // Manejar diferentes tipos de respuesta
+      let result = null;
+      if (response.status === 204) {
+        // No Content - no hay eventos
+        result = { status: 'success', data: { events: [] } };
+      } else if (response.headers.get('content-type')?.includes('application/json')) {
+        result = await response.json();
+      } else {
+        // Si no es JSON, asumir que no hay eventos
+        result = { status: 'success', data: { events: [] } };
+      }
       
       if (response.ok) {
         // Intentar diferentes estructuras de respuesta
@@ -396,7 +407,6 @@ const EventAdminDashboard = () => {
           eventsList = result.events;
         }
         
-        
         setEvents(eventsList);
         
         // Siempre seleccionar el primer evento de la nueva lista
@@ -409,8 +419,9 @@ const EventAdminDashboard = () => {
           setSelectedEventId('');
         }
       } else {
-        console.error('❌ API Error:', result.message || 'Error desconocido');
+        console.error('❌ API Error:', result?.message || 'Error desconocido');
         setEvents([]);
+        setSelectedEventId('');
       }
     } catch (err) {
       console.error('💥 Error fetching events:', err);
@@ -739,7 +750,16 @@ const EventAdminDashboard = () => {
 
           <Tabs 
             value={activeView} 
-            onChange={(e, newValue) => setActiveView(newValue)}
+            onChange={(e, newValue) => {
+              // Solo permitir cambio a usuarios o inventario si hay eventos disponibles
+              if (newValue === 'usuarios' || newValue === 'inventario') {
+                if (selectedEventId && events.length > 0) {
+                  setActiveView(newValue);
+                }
+              } else {
+                setActiveView(newValue);
+              }
+            }}
             sx={{
               '& .MuiTab-root': {
                 color: '#B0BEC5',
@@ -768,8 +788,14 @@ const EventAdminDashboard = () => {
             />
             <Tab 
               value="usuarios" 
+              disabled={!selectedEventId || events.length === 0}
               label={
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Box sx={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: 1,
+                  color: (!selectedEventId || events.length === 0) ? '#6B7280' : 'inherit'
+                }}>
                   <PeopleIcon fontSize="small" />
                   Usuarios
                 </Box>
@@ -777,8 +803,14 @@ const EventAdminDashboard = () => {
             />
             <Tab 
               value="inventario" 
+              disabled={!selectedEventId || events.length === 0}
               label={
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Box sx={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: 1,
+                  color: (!selectedEventId || events.length === 0) ? '#6B7280' : 'inherit'
+                }}>
                   <InventoryIcon fontSize="small" />
                   Inventario
                 </Box>
@@ -1217,7 +1249,7 @@ const EventAdminDashboard = () => {
             fontWeight: 600,
             color: '#374151'
           }}>
-            Evento - "{getSelectedEventDisplayName()}"
+            Evento - <em>Seleccione un evento...</em>
           </Typography>
 
         </Box>
@@ -1347,8 +1379,18 @@ const EventAdminDashboard = () => {
     useEffect(() => {
       if (selectedEventId) {
         fetchDashboardData();
+      } else {
+        // Si no hay evento seleccionado, detener el loading
+        setLoading(false);
       }
     }, [selectedEventId]);
+
+    // Efecto para mantener la vista en dashboard cuando no hay eventos
+    useEffect(() => {
+      if ((!selectedEventId || events.length === 0) && (activeView === 'usuarios' || activeView === 'inventario')) {
+        setActiveView('dashboard');
+      }
+    }, [selectedEventId, events.length, activeView]);
 
     // Removed time-based status updates to prevent API spam
 
@@ -1494,6 +1536,80 @@ const EventAdminDashboard = () => {
             }}>
               Por favor espera un momento...
             </Typography>
+          </Box>
+        </Box>
+      );
+    }
+
+    // Mostrar mensaje cuando no hay eventos
+    if (!selectedEventId || events.length === 0) {
+      return (
+        <Box sx={{ 
+          bgcolor: '#F5F7FA', 
+          minHeight: 'calc(100vh - 80px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          p: 4
+        }}>
+          <Box sx={{ textAlign: 'center' }}>
+            <Box sx={{ 
+              width: 80, 
+              height: 80, 
+              borderRadius: '50%',
+              bgcolor: '#E5E7EB',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              mx: 'auto',
+              mb: 3
+            }}>
+              <Typography sx={{ 
+                fontSize: '32px',
+                color: '#9CA3AF'
+              }}>
+                📅
+              </Typography>
+            </Box>
+            <Typography variant="h6" sx={{ 
+              color: '#374151', 
+              fontWeight: 600,
+              fontSize: '18px',
+              mb: 1
+            }}>
+              No hay eventos disponibles
+            </Typography>
+            <Typography variant="body2" sx={{ 
+              color: '#6B7280', 
+              fontSize: '14px',
+              mb: 3
+            }}>
+              {isAdmin() 
+                ? 'No se encontraron eventos en el sistema. Los organizadores pueden crear eventos desde el panel de creación.'
+                : 'No tienes eventos creados. Ve a "Crear Evento" para comenzar.'
+              }
+            </Typography>
+            <Button
+              variant="outlined"
+              onClick={() => window.location.href = '/create-event'}
+              sx={{
+                color: '#1B2735',
+                backgroundColor: 'transparent',
+                border: '1px solid #9CA3AF',
+                borderRadius: '100px',
+                textTransform: 'none',
+                px: 3,
+                py: 1,
+                fontSize: '14px',
+                fontWeight: 500,
+                '&:hover': {
+                  backgroundColor: 'rgba(27, 39, 53, 0.05)',
+                  borderColor: '#6B7280'
+                }
+              }}
+            >
+              Crear Evento
+            </Button>
           </Box>
         </Box>
       );
@@ -2758,13 +2874,22 @@ const EventAdminDashboard = () => {
 
           <Button
             variant={activeView === 'usuarios' ? 'contained' : 'text'}
-            onClick={() => setActiveView('usuarios')}
+            onClick={() => {
+              if (selectedEventId && events.length > 0) {
+                setActiveView('usuarios');
+              }
+            }}
+            disabled={!selectedEventId || events.length === 0}
             startIcon={<PeopleIcon />}
             sx={{
-              color: activeView === 'usuarios' ? 'white' : '#B0BEC5',
+              color: (!selectedEventId || events.length === 0) ? '#6B7280' : (activeView === 'usuarios' ? 'white' : '#B0BEC5'),
               backgroundColor: activeView === 'usuarios' ? 'rgba(255, 255, 255, 0.1)' : 'transparent',
               '&:hover': {
-                backgroundColor: 'rgba(255, 255, 255, 0.1)'
+                backgroundColor: (!selectedEventId || events.length === 0) ? 'transparent' : 'rgba(255, 255, 255, 0.1)'
+              },
+              '&:disabled': {
+                color: '#6B7280',
+                cursor: 'not-allowed'
               },
               textTransform: 'none',
               fontWeight: 500
@@ -2775,13 +2900,22 @@ const EventAdminDashboard = () => {
 
           <Button
             variant={activeView === 'inventario' ? 'contained' : 'text'}
-            onClick={() => setActiveView('inventario')}
+            onClick={() => {
+              if (selectedEventId && events.length > 0) {
+                setActiveView('inventario');
+              }
+            }}
+            disabled={!selectedEventId || events.length === 0}
             startIcon={<InventoryIcon />}
             sx={{
-              color: activeView === 'inventario' ? 'white' : '#B0BEC5',
+              color: (!selectedEventId || events.length === 0) ? '#6B7280' : (activeView === 'inventario' ? 'white' : '#B0BEC5'),
               backgroundColor: activeView === 'inventario' ? 'rgba(255, 255, 255, 0.1)' : 'transparent',
               '&:hover': {
-                backgroundColor: 'rgba(255, 255, 255, 0.1)'
+                backgroundColor: (!selectedEventId || events.length === 0) ? 'transparent' : 'rgba(255, 255, 255, 0.1)'
+              },
+              '&:disabled': {
+                color: '#6B7280',
+                cursor: 'not-allowed'
               },
               textTransform: 'none',
               fontWeight: 500
