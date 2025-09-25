@@ -393,7 +393,20 @@ const EventsOverview = () => {
       const result = await response.json();
       
       if (response.ok && result.status === 'success') {
-        setEvents(result.data.events || []);
+        const eventsList = result.data.events || [];
+        
+        // Debug: Mostrar información de los eventos
+        console.log('📅 Eventos cargados:', eventsList.length);
+        eventsList.forEach((event, index) => {
+          console.log(`Evento ${index + 1}:`, {
+            nombre: event.informacionGeneral?.nombreEvento,
+            bannerPromocional: event.informacionGeneral?.bannerPromocional,
+            imagenPrincipal: event.imagenPrincipal,
+            estructura: Object.keys(event)
+          });
+        });
+        
+        setEvents(eventsList);
       } else {
         throw new Error(result.message || 'Error al cargar eventos');
       }
@@ -977,13 +990,20 @@ const EventsOverview = () => {
               }} />
               
               <Avatar
-                src={event.imagenPrincipal}
+                src={event.informacionGeneral?.bannerPromocional || event.imagenPrincipal}
                 sx={{ 
                   width: 60, 
                   height: 60,
-                  borderRadius: '8px'
+                  borderRadius: '8px',
+                  bgcolor: '#E5E7EB'
                 }}
-              />
+              >
+                {!event.informacionGeneral?.bannerPromocional && !event.imagenPrincipal && (
+                  <Typography variant="h6" sx={{ color: '#6B7280', fontWeight: 600 }}>
+                    {event.informacionGeneral?.nombreEvento?.charAt(0) || 'E'}
+                  </Typography>
+                )}
+              </Avatar>
             </Box>
             
             {/* Información del evento */}
@@ -1232,13 +1252,20 @@ const EventsOverview = () => {
                   {/* Imagen del evento */}
                   <TableCell>
                     <Avatar
-                      src={event.imagenPrincipal}
+                      src={event.informacionGeneral?.bannerPromocional || event.imagenPrincipal}
                       sx={{ 
                         width: 50, 
                         height: 50,
-                        borderRadius: '8px'
+                        borderRadius: '8px',
+                        bgcolor: '#E5E7EB'
                       }}
-                    />
+                    >
+                      {!event.informacionGeneral?.bannerPromocional && !event.imagenPrincipal && (
+                        <Typography variant="caption" sx={{ color: '#6B7280', fontWeight: 600 }}>
+                          {event.informacionGeneral?.nombreEvento?.charAt(0) || 'E'}
+                        </Typography>
+                      )}
+                    </Avatar>
                   </TableCell>
                   
                   {/* Información del evento */}
