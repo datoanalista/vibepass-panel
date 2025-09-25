@@ -1,6 +1,7 @@
 "use client";
 import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import API_CONFIG from '../config/api';
 import useAuth from '../hooks/useAuth';
 
@@ -290,6 +291,7 @@ const CalendarComponent = ({ selectedEventId }) => {
 };
 
 const EventAdminDashboard = () => {
+  const router = useRouter();
   const { user, logout, isAdmin } = useAuth();
   const [activeView, setActiveView] = useState('dashboard');
   const [selectedEventId, setSelectedEventId] = useState('');
@@ -1591,7 +1593,7 @@ const EventAdminDashboard = () => {
             </Typography>
             <Button
               variant="outlined"
-              onClick={() => window.location.href = '/create-event'}
+              onClick={() => router.push('/create-event')}
               sx={{
                 color: '#1B2735',
                 backgroundColor: 'transparent',
