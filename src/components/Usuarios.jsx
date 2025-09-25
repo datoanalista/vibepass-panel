@@ -56,8 +56,24 @@ const Usuarios = ({ onAddUser, onEditUser, selectedEventId }) => {
       setLoading(true);
       setError(null);
       
+      console.log('🔍 [DEBUG] fetchUsuarios iniciado');
+      console.log('🔍 [DEBUG] selectedEventId:', selectedEventId);
+      
+      // Logs de configuración de entorno
+      console.log('🌍 [DEBUG] Entorno actual:', process.env.NODE_ENV);
+      console.log('🌍 [DEBUG] NEXT_PUBLIC_ENVIRONMENT:', process.env.NEXT_PUBLIC_ENVIRONMENT);
+      console.log('🌍 [DEBUG] API_CONFIG.BASE_URL:', API_CONFIG.BASE_URL);
+      console.log('🌍 [DEBUG] NEXT_PUBLIC_API_BASE_URL:', process.env.NEXT_PUBLIC_API_BASE_URL);
+      
+      // Verificar token de autenticación
+      const authToken = sessionStorage.getItem('authToken');
+      const userData = sessionStorage.getItem('userData');
+      console.log('🔐 [DEBUG] Token de autenticación:', authToken ? 'Presente' : 'Ausente');
+      console.log('👤 [DEBUG] Datos de usuario:', userData ? JSON.parse(userData) : 'Ausente');
+      
       // Si no hay evento seleccionado, mostrar estado vacío sin hacer petición
       if (!selectedEventId) {
+        console.log('⚠️ [DEBUG] No hay evento seleccionado');
         setUsuarios([]);
         setError('No hay evento seleccionado');
         setLoading(false);
@@ -65,25 +81,112 @@ const Usuarios = ({ onAddUser, onEditUser, selectedEventId }) => {
       }
       
       // Construir URL con filtro por evento
-      const url = `${API_CONFIG.ENDPOINTS.USERS}?eventoId=${selectedEventId}`;
+      // Intentar primero con el endpoint de dashboard si existe
+      const baseUrl = API_CONFIG.BASE_URL;
+      const dashboardUsersUrl = `${baseUrl}/api/dashboard/users?eventoId=${selectedEventId}`;
+      const regularUsersUrl = `${API_CONFIG.ENDPOINTS.USERS}?eventoId=${selectedEventId}`;
+      
+      console.log('🌐 [DEBUG] URL de petición (dashboard):', dashboardUsersUrl);
+      console.log('🌐 [DEBUG] URL de petición (regular):', regularUsersUrl);
+      console.log('🌐 [DEBUG] API_CONFIG.ENDPOINTS.USERS:', API_CONFIG.ENDPOINTS.USERS);
+      
+      let finalUrl, finalRegularUrl;
+      
+      // Verificar si la URL base es válida
+      if (!baseUrl || baseUrl.includes('@') || baseUrl === 'undefined') {
+        console.error('💥 [DEBUG] URL base inválida:', baseUrl);
+        console.error('💥 [DEBUG] Esto indica un problema con las variables de entorno en producción');
         
-      const response = await fetch(url);
-      const result = await response.json();
+        // Fallback para GitHub Pages - usar una URL por defecto
+        const fallbackBaseUrl = 'https://tu-servidor-api.com'; // Cambiar por tu URL real
+        console.log('🔄 [DEBUG] Usando URL de fallback:', fallbackBaseUrl);
+        
+        finalUrl = `${fallbackBaseUrl}/api/dashboard/users?eventoId=${selectedEventId}`;
+        finalRegularUrl = `${fallbackBaseUrl}/api/users?eventoId=${selectedEventId}`;
+        
+        console.log('🌐 [DEBUG] URL de fallback (dashboard):', finalUrl);
+        console.log('🌐 [DEBUG] URL de fallback (regular):', finalRegularUrl);
+      } else {
+        // Usar el endpoint de dashboard primero
+        finalUrl = dashboardUsersUrl;
+        finalRegularUrl = regularUsersUrl;
+      }
+        
+      // Headers con autenticación
+      const headers = {
+        ...API_CONFIG.REQUEST_CONFIG.headers,
+        'Authorization': `Bearer ${sessionStorage.getItem('authToken')}`,
+      };
+      
+      console.log('🔐 [DEBUG] Headers enviados:', headers);
+      
+      let response = await fetch(finalUrl, {
+        method: 'GET',
+        headers: headers
+      });
+      console.log('📥 [DEBUG] Status de respuesta (dashboard):', response.status);
+      
+      // Si falla el endpoint de dashboard, probar el endpoint regular
+      if (!response.ok) {
+        console.log('⚠️ [DEBUG] Endpoint de dashboard falló, probando endpoint regular');
+        response = await fetch(finalRegularUrl, {
+          method: 'GET',
+          headers: headers
+        });
+        console.log('📥 [DEBUG] Status de respuesta (regular):', response.status);
+        
+        // Si también falla el endpoint regular, probar URLs alternativas
+        if (!response.ok) {
+          console.log('⚠️ [DEBUG] Endpoint regular también falló, probando URLs alternativas');
+          
+          // Probar con localhost (por si acaso en producción está mal configurado)
+          const localhostUrl = `http://localhost:3001/api/dashboard/users?eventoId=${selectedEventId}`;
+          console.log('🌐 [DEBUG] Probando localhost:', localhostUrl);
+          
+          try {
+            response = await fetch(localhostUrl, {
+              method: 'GET',
+              headers: headers
+            });
+            console.log('📥 [DEBUG] Status de respuesta (localhost):', response.status);
+          } catch (localhostError) {
+            console.log('❌ [DEBUG] Localhost también falló:', localhostError);
+          }
+        }
+      }
+      
+      console.log('📥 [DEBUG] Headers de respuesta:', Object.fromEntries(response.headers.entries()));
+      
+      let result;
+      try {
+        result = await response.json();
+        console.log('📥 [DEBUG] Respuesta completa del servidor:', result);
+      } catch (jsonError) {
+        console.error('💥 [DEBUG] Error al parsear JSON:', jsonError);
+        const textResponse = await response.text();
+        console.log('📥 [DEBUG] Respuesta como texto:', textResponse);
+        result = { status: 'error', message: 'Respuesta no válida del servidor' };
+      }
       
       if (response.ok && result.status === 'success') {
-        setUsuarios(result.data.users || []);
+        const usersList = result.data.users || [];
+        console.log('✅ [DEBUG] Usuarios obtenidos exitosamente:', usersList.length);
+        console.log('👥 [DEBUG] Lista de usuarios:', usersList);
+        setUsuarios(usersList);
         setError(null);
       } else {
+        console.log('❌ [DEBUG] Error en la respuesta:', result);
         // No lanzar error, solo mostrar estado vacío
         setUsuarios([]);
         setError('No hay usuarios registrados para este evento');
       }
     } catch (err) {
-      console.error('Error fetching users:', err);
+      console.error('💥 [DEBUG] Error fetching users:', err);
       setUsuarios([]);
       setError('No hay usuarios registrados para este evento');
     } finally {
       setLoading(false);
+      console.log('🏁 [DEBUG] fetchUsuarios finalizado, loading: false');
     }
   };
 
@@ -125,7 +228,38 @@ const Usuarios = ({ onAddUser, onEditUser, selectedEventId }) => {
 
 
 
+  // Función de diagnóstico de configuración
+  const diagnosticarConfiguracion = () => {
+    console.log('🔧 [DIAGNOSTICO] === DIAGNÓSTICO DE CONFIGURACIÓN ===');
+    console.log('🔧 [DIAGNOSTICO] NODE_ENV:', process.env.NODE_ENV);
+    console.log('🔧 [DIAGNOSTICO] NEXT_PUBLIC_ENVIRONMENT:', process.env.NEXT_PUBLIC_ENVIRONMENT);
+    console.log('🔧 [DIAGNOSTICO] NEXT_PUBLIC_API_BASE_URL:', process.env.NEXT_PUBLIC_API_BASE_URL);
+    console.log('🔧 [DIAGNOSTICO] API_CONFIG.BASE_URL:', API_CONFIG.BASE_URL);
+    console.log('🔧 [DIAGNOSTICO] API_CONFIG.ENDPOINTS.USERS:', API_CONFIG.ENDPOINTS.USERS);
+    console.log('🔧 [DIAGNOSTICO] window.location.hostname:', window.location.hostname);
+    console.log('🔧 [DIAGNOSTICO] window.location.origin:', window.location.origin);
+    console.log('🔧 [DIAGNOSTICO] window.location.pathname:', window.location.pathname);
+    console.log('🔧 [DIAGNOSTICO] window.location.href:', window.location.href);
+    
+    // Verificar si estamos en GitHub Pages
+    const isGitHubPages = window.location.hostname.includes('github.io');
+    console.log('🔧 [DIAGNOSTICO] ¿Es GitHub Pages?:', isGitHubPages);
+    
+    if (isGitHubPages) {
+      console.log('🔧 [DIAGNOSTICO] ⚠️ Detectado GitHub Pages - las URLs de API pueden estar mal configuradas');
+    }
+    
+    console.log('🔧 [DIAGNOSTICO] === FIN DIAGNÓSTICO ===');
+  };
+
   useEffect(() => {
+    console.log('🔄 [DEBUG] useEffect ejecutado, selectedEventId:', selectedEventId);
+    
+    // Ejecutar diagnóstico solo una vez al montar el componente
+    if (selectedEventId) {
+      diagnosticarConfiguracion();
+    }
+    
     fetchUsuarios();
   }, [selectedEventId]); // Recargar cuando cambie el evento seleccionado
 
@@ -176,6 +310,19 @@ const Usuarios = ({ onAddUser, onEditUser, selectedEventId }) => {
     return nombre.includes(query) || 
            correo.includes(query) || 
            rut.includes(query);
+  });
+
+  // Logs de debug para el renderizado
+  console.log('🎨 [DEBUG] Renderizando Usuarios component');
+  console.log('🎨 [DEBUG] Estado actual:', { 
+    loading, 
+    error, 
+    usuarios: usuarios.length, 
+    selectedEventId,
+    activeTab,
+    searchQuery,
+    usuariosPorTab: usuariosPorTab.length,
+    usuariosFiltrados: usuariosFiltrados.length
   });
 
   return (
