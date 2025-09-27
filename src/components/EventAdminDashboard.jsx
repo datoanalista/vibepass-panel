@@ -1405,6 +1405,42 @@ const EventAdminDashboard = () => {
       }
     }, [selectedEventId, events.length, activeView]);
 
+    // Efecto para actualizar el estado del evento cuando cambie el evento seleccionado
+    useEffect(() => {
+      if (selectedEvent) {
+        const estadoReal = selectedEvent?.informacionGeneral?.estado || selectedEvent?.estado || 'programado';
+        const eventStatus = {
+          status: estadoReal.toLowerCase(),
+          message: (() => {
+            switch(estadoReal.toLowerCase()) {
+              case 'programado': return 'Evento programado';
+              case 'activo': return 'Evento activo';
+              case 'borrador': return 'Borrador';
+              case 'finalizado': return 'Evento finalizado';
+              case 'cancelado': return 'Evento cancelado';
+              default: return 'Evento programado';
+            }
+          })(),
+          color: (() => {
+            switch(estadoReal.toLowerCase()) {
+              case 'programado': return '#3B82F6';
+              case 'activo': return '#10B981';
+              case 'borrador': return '#F59E0B';
+              case 'finalizado': return '#6B7280';
+              case 'cancelado': return '#EF4444';
+              default: return '#3B82F6';
+            }
+          })()
+        };
+        
+        setDashboardData(prev => ({
+          ...prev,
+          eventoActivo: eventStatus.status,
+          eventStatus: eventStatus
+        }));
+      }
+    }, [selectedEvent]);
+
     // Removed time-based status updates to prevent API spam
 
     const fetchDashboardData = async () => {
@@ -1418,8 +1454,31 @@ const EventAdminDashboard = () => {
         const inventoryArray = Array.isArray(inventoryData) ? inventoryData : (inventoryData.data?.items || inventoryData.inventory || inventoryData.data || []);
         setInventory(inventoryArray);
         
-        // Determinar el estado del evento usando la nueva función
-        const eventStatus = getEventStatus(selectedEvent);
+        // Determinar el estado del evento usando el estado real del backend
+        const estadoReal = selectedEvent?.informacionGeneral?.estado || selectedEvent?.estado || 'programado';
+        const eventStatus = {
+          status: estadoReal.toLowerCase(),
+          message: (() => {
+            switch(estadoReal.toLowerCase()) {
+              case 'programado': return 'Evento programado';
+              case 'activo': return 'Evento activo';
+              case 'borrador': return 'Borrador';
+              case 'finalizado': return 'Evento finalizado';
+              case 'cancelado': return 'Evento cancelado';
+              default: return 'Evento programado';
+            }
+          })(),
+          color: (() => {
+            switch(estadoReal.toLowerCase()) {
+              case 'programado': return '#3B82F6';
+              case 'activo': return '#10B981';
+              case 'borrador': return '#F59E0B';
+              case 'finalizado': return '#6B7280';
+              case 'cancelado': return '#EF4444';
+              default: return '#3B82F6';
+            }
+          })()
+        };
          
          // Inicializar con valores por defecto - se calcularán después de procesar las tablas
          setDashboardData({
