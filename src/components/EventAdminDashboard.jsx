@@ -308,6 +308,7 @@ const EventAdminDashboard = () => {
   const [showAddUserForm, setShowAddUserForm] = useState(false);
   const [showEditUserForm, setShowEditUserForm] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
+  const [currentUserTab, setCurrentUserTab] = useState(null);
   const [showEditInventoryForm, setShowEditInventoryForm] = useState(false);
   const [editingInventory, setEditingInventory] = useState(null);
   const [userFormData, setUserFormData] = useState({
@@ -1241,36 +1242,58 @@ const EventAdminDashboard = () => {
   };
 
   // Componente Event Selector (debajo del header) - Con nuevo dropdown
-  const EventSelector = () => (
-    <Box sx={{
-      width: '100%',
-      bgcolor: '#F5F7FA',
-      borderBottom: '1px solid #E5E7EB',
-      px: 3,
-      py: 2
-    }}>
+  const EventSelector = () => {
+    // Determinar si mostrar el selector de evento según la vista activa
+    const shouldShowEventSelector = () => {
+      // Solo mostrar para dashboard, inventario, y para usuarios cuando NO sea la pestaña "Organizadores"
+      if (activeView === 'dashboard' || activeView === 'inventario') {
+        return true;
+      }
+      
+      if (activeView === 'usuarios') {
+        // Para usuarios, solo mostrar si NO estamos en la pestaña "Organizadores"
+        return currentUserTab !== 'Organizadores';
+      }
+      
+      return false;
+    };
+
+    // Si no debe mostrar el selector, no renderizar nada
+    if (!shouldShowEventSelector()) {
+      return null;
+    }
+
+    return (
       <Box sx={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        maxWidth: '1200px',
-        mx: 'auto'
+        width: '100%',
+        bgcolor: '#F5F7FA',
+        borderBottom: '1px solid #E5E7EB',
+        px: 3,
+        py: 2
       }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-          <Typography sx={{
-            fontSize: '18px',
-            fontWeight: 600,
-            color: '#374151'
-          }}>
-            Evento - <em>{selectedEvent?.informacionGeneral?.nombreEvento || 'Seleccione un evento...'}</em>
-          </Typography>
+        <Box sx={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          maxWidth: '1200px',
+          mx: 'auto'
+        }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+            <Typography sx={{
+              fontSize: '18px',
+              fontWeight: 600,
+              color: '#374151'
+            }}>
+              Evento - <em>{selectedEvent?.informacionGeneral?.nombreEvento || 'Seleccione un evento...'}</em>
+            </Typography>
 
+          </Box>
+
+          <EventDropdown />
         </Box>
-
-        <EventDropdown />
       </Box>
-    </Box>
-  );
+    );
+  };
 
     const DashboardView = () => {
          const [dashboardData, setDashboardData] = useState({
@@ -3200,7 +3223,7 @@ const EventAdminDashboard = () => {
               rol: 'Administrador'
             });
             setShowAddUserForm(true);
-          }} onEditUser={handleEditUser} selectedEventId={selectedEventId} />}
+          }} onEditUser={handleEditUser} selectedEventId={selectedEventId} onTabChange={setCurrentUserTab} />}
           {activeView === 'inventario' && <Inventario onAddInventory={() => {
             // Limpiar el formulario antes de abrirlo
             setInventoryFormData({
