@@ -1499,39 +1499,55 @@ const EventAdminDashboard = () => {
 
     // Efecto para actualizar el estado del evento cuando cambie el evento seleccionado
     useEffect(() => {
-      if (selectedEvent) {
-        const estadoReal = selectedEvent?.informacionGeneral?.estado || selectedEvent?.estado || 'programado';
-        const eventStatus = {
-          status: estadoReal.toLowerCase(),
-          message: (() => {
-            switch(estadoReal.toLowerCase()) {
-              case 'programado': return 'Evento programado';
-              case 'activo': return 'Evento activo';
-              case 'borrador': return 'Borrador';
-              case 'finalizado': return 'Evento finalizado';
-              case 'cancelado': return 'Evento cancelado';
-              default: return 'Evento programado';
-            }
-          })(),
-          color: (() => {
-            switch(estadoReal.toLowerCase()) {
-              case 'programado': return '#3B82F6';
-              case 'activo': return '#10B981';
-              case 'borrador': return '#F59E0B';
-              case 'finalizado': return '#6B7280';
-              case 'cancelado': return '#EF4444';
-              default: return '#3B82F6';
-            }
-          })()
-        };
+      if (selectedEventId && events.length > 0) {
+        const currentSelectedEvent = events.find(event => event._id === selectedEventId);
         
-        setDashboardData(prev => ({
-          ...prev,
-          eventoActivo: eventStatus.status,
-          eventStatus: eventStatus
-        }));
+        if (currentSelectedEvent) {
+          const estadoReal = currentSelectedEvent?.informacionGeneral?.estado || currentSelectedEvent?.estado || 'programado';
+          
+          console.log('🔄 [DEBUG] Actualizando estado del evento:', {
+            selectedEventId,
+            eventName: currentSelectedEvent?.informacionGeneral?.nombreEvento,
+            estadoReal,
+            timestamp: new Date().toISOString()
+          });
+          
+          const eventStatus = {
+            status: estadoReal.toLowerCase(),
+            message: (() => {
+              switch(estadoReal.toLowerCase()) {
+                case 'programado': return 'Evento programado';
+                case 'activo': return 'Evento activo';
+                case 'borrador': return 'Borrador';
+                case 'finalizado': return 'Evento finalizado';
+                case 'cancelado': return 'Evento cancelado';
+                default: return 'Evento programado';
+              }
+            })(),
+            color: (() => {
+              switch(estadoReal.toLowerCase()) {
+                case 'programado': return '#3B82F6';
+                case 'activo': return '#10B981';
+                case 'borrador': return '#F59E0B';
+                case 'finalizado': return '#6B7280';
+                case 'cancelado': return '#EF4444';
+                default: return '#3B82F6';
+              }
+            })()
+          };
+          
+          console.log('🎯 [DEBUG] Nuevo estado del evento:', eventStatus);
+          
+          setDashboardData(prev => ({
+            ...prev,
+            eventoActivo: eventStatus.status,
+            eventStatus: eventStatus
+          }));
+        } else {
+          console.log('⚠️ [DEBUG] No se encontró el evento seleccionado:', selectedEventId);
+        }
       }
-    }, [selectedEvent]);
+    }, [selectedEventId, events]);
 
     // Removed time-based status updates to prevent API spam
 
