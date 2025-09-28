@@ -5,6 +5,32 @@ import { useRouter } from 'next/navigation';
 import API_CONFIG from '../config/api';
 import useAuth from '../hooks/useAuth';
 
+// Función para formatear fecha de AAAA-MM-DD a "Día DD de MMM. AAAA"
+const formatDate = (dateString) => {
+  if (!dateString) return 'Sin fecha';
+  
+  try {
+    const date = new Date(dateString);
+    const days = [
+      'Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'
+    ];
+    const months = [
+      'ene', 'feb', 'mar', 'abr', 'may', 'jun',
+      'jul', 'ago', 'sep', 'oct', 'nov', 'dic'
+    ];
+    
+    const dayOfWeek = days[date.getDay()];
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = months[date.getMonth()];
+    const year = date.getFullYear();
+    
+    return `${dayOfWeek} ${day} de ${month}. ${year}`;
+  } catch (error) {
+    console.error('Error formatting date:', error);
+    return dateString;
+  }
+};
+
 // Función para determinar el estado del evento según la hora actual
 const getEventStatus = (event) => {
   if (!event?.informacionGeneral?.fechaEvento || !event?.informacionGeneral?.horaInicio || !event?.informacionGeneral?.horaTermino) {
@@ -772,19 +798,8 @@ const EventAdminDashboard = () => {
     const eventDate = selectedEvent.informacionGeneral?.fechaEvento;
     
     if (eventDate) {
-      try {
-        // Parsear la fecha como local para evitar problemas de timezone
-        const [year, month, day] = eventDate.split('-');
-        const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
-        const dayNum = date.getDate();
-        const monthName = date.toLocaleDateString('es-CL', { month: 'short' });
-        const yearNum = date.getFullYear();
-        const formattedDate = `${dayNum} de ${monthName} de ${yearNum}`;
-        return `${eventName} / ${formattedDate}`;
-      } catch (error) {
-        console.error('Error formatting selected event date:', error);
-        return eventName;
-      }
+      const formattedDate = formatDate(eventDate);
+      return `${eventName} / ${formattedDate}`;
     }
     
     return eventName;
@@ -1062,19 +1077,7 @@ const EventAdminDashboard = () => {
       const eventName = event.informacionGeneral?.nombreEvento || 'Evento sin nombre';
       const eventDate = event.informacionGeneral?.fechaEvento;
       
-      let formattedDate = '';
-      if (eventDate) {
-        try {
-          const [year, month, day] = eventDate.split('-');
-          const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
-          const dayNum = date.getDate();
-          const monthName = date.toLocaleDateString('es-CL', { month: 'short' });
-          const yearNum = date.getFullYear();
-          formattedDate = `${dayNum} de ${monthName} de ${yearNum}`;
-        } catch (error) {
-          console.error('Error formatting date:', error);
-        }
-      }
+      const formattedDate = eventDate ? formatDate(eventDate) : '';
       
       const displayText = formattedDate ? `${eventName} / ${formattedDate}` : eventName;
       
@@ -2609,7 +2612,7 @@ const EventAdminDashboard = () => {
                        {evento.organizador?.correoElectronico || 'Sin correo'}
                      </Typography>
                      <Typography variant="body2" sx={{ color: '#374151' }}>
-                       {evento.informacionGeneral?.fechaEvento || 'Sin fecha'}
+                       {formatDate(evento.informacionGeneral?.fechaEvento)}
                      </Typography>
                    </Box>
                  ))}
