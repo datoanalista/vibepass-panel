@@ -1068,7 +1068,6 @@ const EventAdminDashboard = () => {
     }, []);
 
     const handleEventSelect = (eventId) => {
-      alert(`🔍 DEBUG: handleEventSelect ejecutado - eventId: ${eventId}`);
       setSelectedEventId(eventId);
       setIsOpen(false);
       setSearchTerm('');
@@ -1500,17 +1499,11 @@ const EventAdminDashboard = () => {
 
     // Efecto para actualizar el estado del evento cuando cambie el evento seleccionado
     useEffect(() => {
-      alert(`🔍 DEBUG: useEffect ejecutado - selectedEventId: ${selectedEventId}, events.length: ${events.length}`);
-      
       if (selectedEventId && events.length > 0) {
         const currentSelectedEvent = events.find(event => event._id === selectedEventId);
         
-        alert(`🔍 DEBUG: Evento encontrado: ${currentSelectedEvent ? 'SÍ' : 'NO'}`);
-        
         if (currentSelectedEvent) {
           const estadoReal = currentSelectedEvent?.informacionGeneral?.estado || currentSelectedEvent?.estado || 'programado';
-          
-          alert(`🔍 DEBUG: Estado real del evento: ${estadoReal}, Nombre: ${currentSelectedEvent?.informacionGeneral?.nombreEvento}`);
           
           console.log('🔄 [DEBUG] Actualizando estado del evento:', {
             selectedEventId,
@@ -1543,24 +1536,16 @@ const EventAdminDashboard = () => {
             })()
           };
           
-          alert(`🔍 DEBUG: Nuevo estado calculado: ${eventStatus.message} (${eventStatus.status})`);
-          
           console.log('🎯 [DEBUG] Nuevo estado del evento:', eventStatus);
           
-          setDashboardData(prev => {
-            alert(`🔍 DEBUG: setDashboardData ejecutado - Estado anterior: ${prev.eventStatus?.message}, Nuevo estado: ${eventStatus.message}`);
-            return {
-              ...prev,
-              eventoActivo: eventStatus.status,
-              eventStatus: eventStatus
-            };
-          });
+          setDashboardData(prev => ({
+            ...prev,
+            eventoActivo: eventStatus.status,
+            eventStatus: eventStatus
+          }));
         } else {
-          alert(`⚠️ DEBUG: No se encontró el evento con ID: ${selectedEventId}`);
           console.log('⚠️ [DEBUG] No se encontró el evento seleccionado:', selectedEventId);
         }
-      } else {
-        alert(`⚠️ DEBUG: Condiciones no cumplidas - selectedEventId: ${selectedEventId}, events.length: ${events.length}`);
       }
     }, [selectedEventId, events]);
 
@@ -1568,7 +1553,6 @@ const EventAdminDashboard = () => {
 
     const fetchDashboardData = async () => {
       try {
-        alert(`🔍 DEBUG: fetchDashboardData ejecutado - selectedEventId: ${selectedEventId}`);
         setLoading(true);
         
         // Solo obtener inventario para la sección de productos agendables
@@ -1577,55 +1561,23 @@ const EventAdminDashboard = () => {
         
         const inventoryArray = Array.isArray(inventoryData) ? inventoryData : (inventoryData.data?.items || inventoryData.inventory || inventoryData.data || []);
         setInventory(inventoryArray);
-        
-        // Determinar el estado del evento usando el estado real del backend
-        const estadoReal = selectedEvent?.informacionGeneral?.estado || selectedEvent?.estado || 'programado';
-        
-        alert(`🔍 DEBUG: fetchDashboardData - Estado real: ${estadoReal}, selectedEvent: ${selectedEvent ? 'existe' : 'NO existe'}`);
-        
-        const eventStatus = {
-          status: estadoReal.toLowerCase(),
-          message: (() => {
-            switch(estadoReal.toLowerCase()) {
-              case 'programado': return 'Evento programado';
-              case 'activo': return 'Evento activo';
-              case 'borrador': return 'Borrador';
-              case 'finalizado': return 'Evento finalizado';
-              case 'cancelado': return 'Evento cancelado';
-              default: return 'Evento programado';
-            }
-          })(),
-          color: (() => {
-            switch(estadoReal.toLowerCase()) {
-              case 'programado': return '#3B82F6';
-              case 'activo': return '#10B981';
-              case 'borrador': return '#F59E0B';
-              case 'finalizado': return '#6B7280';
-              case 'cancelado': return '#EF4444';
-              default: return '#3B82F6';
-            }
-          })()
-        };
          
-        alert(`🔍 DEBUG: fetchDashboardData - Estado calculado: ${eventStatus.message} (${eventStatus.status})`);
-         
-         // Inicializar con valores por defecto - se calcularán después de procesar las tablas
-         setDashboardData({
+         // Solo actualizar datos de ventas, NO sobrescribir eventStatus
+         setDashboardData(prev => ({
+           ...prev, // Mantener el eventStatus existente
            totalVentas: 0,
            ventasDelDia: 0,
-           ticketsVendidos: 0,
-           eventoActivo: eventStatus.status,
-           eventStatus: eventStatus
-         });
+           ticketsVendidos: 0
+         }));
       } catch (error) {
         console.error('Error fetching dashboard data:', error);
-                 setDashboardData({
-           totalVentas: 0,
-           ventasDelDia: 0,
-           ticketsVendidos: 0,
-           eventoActivo: 'programado',
-           eventStatus: { status: 'programado', message: 'Evento programado', color: '#3B82F6' }
-         });
+        // Solo actualizar datos de ventas en caso de error, NO sobrescribir eventStatus
+        setDashboardData(prev => ({
+          ...prev, // Mantener el eventStatus existente
+          totalVentas: 0,
+          ventasDelDia: 0,
+          ticketsVendidos: 0
+        }));
       } finally {
         setLoading(false);
       }
@@ -1832,16 +1784,13 @@ const EventAdminDashboard = () => {
               bgcolor: dashboardData.eventStatus?.color || '#3B82F6'
             }} />
             <Typography variant="h6" sx={{ color: '#374151', fontWeight: 600 }}>
-              {(() => {
-                alert(`🔍 DEBUG: Renderizando estado - dashboardData.eventStatus?.message: ${dashboardData.eventStatus?.message}, status: ${dashboardData.eventStatus?.status}, selectedEventId: ${selectedEventId}`);
-                return dashboardData.eventStatus?.status === 'por_comenzar' && dashboardData.eventStatus?.timeText ? (
-                  <>
-                    Evento comenzará en <span style={{ fontWeight: 'bold', fontSize: '20px' }}>{dashboardData.eventStatus.timeText}</span>
-                  </>
-                ) : (
-                  dashboardData.eventStatus?.message || 'Evento programado'
-                );
-              })()}
+              {dashboardData.eventStatus?.status === 'por_comenzar' && dashboardData.eventStatus?.timeText ? (
+                <>
+                  Evento comenzará en <span style={{ fontWeight: 'bold', fontSize: '20px' }}>{dashboardData.eventStatus.timeText}</span>
+                </>
+              ) : (
+                dashboardData.eventStatus?.message || 'Evento programado'
+              )}
             </Typography>
             <Box sx={{ flexGrow: 1 }} />
             <Button 
