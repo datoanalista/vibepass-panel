@@ -299,6 +299,8 @@ const EventAdminDashboard = () => {
   
   const [events, setEvents] = useState([]);
   const [eventsLoading, setEventsLoading] = useState(false);
+  const [eventosPasados, setEventosPasados] = useState([]);
+  const [lastProcessedEventId, setLastProcessedEventId] = useState(null);
   const [organizadores, setOrganizadores] = useState([]);
   const [selectedOrganizadorId, setSelectedOrganizadorId] = useState('');
   const [userMenuOpen, setUserMenuOpen] = useState(false);
@@ -432,6 +434,32 @@ const EventAdminDashboard = () => {
     } finally {
       setEventsLoading(false);
     }
+  };
+
+  const updateEventosPasados = (organizadorId) => {
+    console.log('📅 [DEBUG] Actualizando eventos pasados para organizador:', organizadorId);
+    console.log('📅 [DEBUG] Total eventos disponibles:', events.length);
+    
+    const eventosFinalizados = events.filter(evento => {
+      const isFinalizado = evento.informacionGeneral?.estado === 'finalizado';
+      const eventoCreatedById = typeof evento.createdBy === 'object' ? evento.createdBy._id : evento.createdBy;
+      const organizadorIdToCompare = typeof organizadorId === 'object' ? organizadorId._id : organizadorId;
+      const belongsToOrganizador = eventoCreatedById === organizadorIdToCompare;
+      
+      console.log(`📊 [DEBUG] Evento: ${evento.informacionGeneral?.nombreEvento}`);
+      console.log(`📊 [DEBUG] - Estado: ${evento.informacionGeneral?.estado}`);
+      console.log(`📊 [DEBUG] - createdBy: ${eventoCreatedById}`);
+      console.log(`📊 [DEBUG] - organizadorId: ${organizadorIdToCompare}`);
+      console.log(`📊 [DEBUG] - isFinalizado: ${isFinalizado}`);
+      console.log(`📊 [DEBUG] - belongsToOrganizador: ${belongsToOrganizador}`);
+      console.log(`📊 [DEBUG] - PASA FILTRO: ${isFinalizado && belongsToOrganizador}`);
+      
+      return isFinalizado && belongsToOrganizador;
+    });
+    
+    console.log('✅ [DEBUG] Eventos finalizados encontrados:', eventosFinalizados.length);
+    console.log('✅ [DEBUG] Eventos finalizados:', eventosFinalizados.map(e => e.informacionGeneral?.nombreEvento));
+    setEventosPasados(eventosFinalizados);
   };
 
 
@@ -677,6 +705,44 @@ const EventAdminDashboard = () => {
       fetchEvents(selectedOrganizadorId || null);
     }
   }, [selectedOrganizadorId, mounted]);
+
+  // Efecto para actualizar historial cuando cambia el evento seleccionado
+  useEffect(() => {
+    if (mounted && selectedEventId && selectedEventId !== lastProcessedEventId && events.length > 0) {
+      console.log('🔄 [DEBUG] selectedEventId cambió:', selectedEventId);
+      setLastProcessedEventId(selectedEventId);
+      
+      // Encontrar el evento seleccionado
+      const selectedEvent = events.find(evento => 
+        (evento.id || evento._id) === selectedEventId
+      );
+      
+      if (selectedEvent) {
+        console.log('🎯 [DEBUG] Evento seleccionado encontrado:', selectedEvent.informacionGeneral?.nombreEvento);
+        console.log('🎯 [DEBUG] createdBy del evento:', selectedEvent.createdBy);
+        
+        // Actualizar historial con eventos del organizador del evento seleccionado
+        updateEventosPasados(selectedEvent.createdBy);
+      }
+    }
+  }, [selectedEventId, lastProcessedEventId, mounted]);
+
+  // Efecto para actualizar historial cuando se cargan eventos inicialmente
+  useEffect(() => {
+    if (mounted && events.length > 0 && selectedEventId && !lastProcessedEventId) {
+      console.log('🔄 [DEBUG] Eventos cargados inicialmente, actualizando historial');
+      setLastProcessedEventId(selectedEventId);
+      
+      const selectedEvent = events.find(evento => 
+        (evento.id || evento._id) === selectedEventId
+      );
+      
+      if (selectedEvent) {
+        console.log('🎯 [DEBUG] Evento inicial encontrado:', selectedEvent.informacionGeneral?.nombreEvento);
+        updateEventosPasados(selectedEvent.createdBy);
+      }
+    }
+  }, [events, mounted, selectedEventId, lastProcessedEventId]);
 
   // Cerrar menú de usuario cuando se hace clic fuera
   useEffect(() => {
@@ -2472,7 +2538,7 @@ const EventAdminDashboard = () => {
            }}>
              <Box sx={{ 
                display: 'grid', 
-               gridTemplateColumns: '1fr 1fr 1fr 1fr 1fr auto',
+               gridTemplateColumns: '1fr 1fr 1fr 1fr 1fr',
                gap: '16px 24px',
                alignItems: 'center',
                mb: 2,
@@ -2484,7 +2550,7 @@ const EventAdminDashboard = () => {
                py: 1.5
              }}>
                <Typography variant="body2" sx={{ color: '#6B7280', fontWeight: 600 }}>
-                 Cliente
+                 Evento
                </Typography>
                <Typography variant="body2" sx={{ color: '#6B7280', fontWeight: 600 }}>
                  Rut de empresa
@@ -2498,20 +2564,57 @@ const EventAdminDashboard = () => {
                <Typography variant="body2" sx={{ color: '#6B7280', fontWeight: 600 }}>
                  Fecha
                </Typography>
-               <Box></Box>
              </Box>
 
-             <Box sx={{ 
-               display: 'flex', 
-               justifyContent: 'center', 
-               alignItems: 'center', 
-               py: 6,
-               color: '#6B7280'
-             }}>
-               <Typography variant="body1">
-                 No hay registros disponibles
-               </Typography>
-             </Box>
+             {eventosPasados.length === 0 ? (
+               <Box sx={{ 
+                 display: 'flex', 
+                 justifyContent: 'center', 
+                 alignItems: 'center', 
+                 py: 6,
+                 color: '#6B7280'
+               }}>
+                 <Typography variant="body1">
+                   No hay eventos pasados disponibles
+                 </Typography>
+               </Box>
+             ) : (
+               <Box>
+                 {eventosPasados.map((evento, index) => (
+                   <Box
+                     key={evento.id || evento._id || index}
+                     sx={{
+                       display: 'grid',
+                       gridTemplateColumns: '1fr 1fr 1fr 1fr 1fr',
+                       gap: '16px 24px',
+                       alignItems: 'center',
+                       py: 2,
+                       px: 2,
+                       borderBottom: index < eventosPasados.length - 1 ? '1px solid #F3F4F6' : 'none',
+                       '&:hover': {
+                         backgroundColor: '#F9FAFB'
+                       }
+                     }}
+                   >
+                     <Typography variant="body2" sx={{ color: '#374151' }}>
+                       {evento.informacionGeneral?.nombreEvento || 'Sin evento'}
+                     </Typography>
+                     <Typography variant="body2" sx={{ color: '#374151' }}>
+                       {evento.organizador?.rutEmpresa || 'Sin RUT'}
+                     </Typography>
+                     <Typography variant="body2" sx={{ color: '#374151' }}>
+                       {evento.organizador?.nombreOrganizador || 'Sin nombre'}
+                     </Typography>
+                     <Typography variant="body2" sx={{ color: '#374151' }}>
+                       {evento.organizador?.correoElectronico || 'Sin correo'}
+                     </Typography>
+                     <Typography variant="body2" sx={{ color: '#374151' }}>
+                       {evento.informacionGeneral?.fechaEvento || 'Sin fecha'}
+                     </Typography>
+                   </Box>
+                 ))}
+               </Box>
+             )}
 
              <Button 
                variant="text" 
