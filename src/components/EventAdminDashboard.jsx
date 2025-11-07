@@ -502,8 +502,10 @@ const EventAdminDashboard = () => {
       setCreateUserLoading(true);
       
 
+      // Asegurar que el correo electrónico se preserve exactamente como se ingresa (con puntos y guiones)
       const userDataWithEvent = {
         ...userFormData,
+        correoElectronico: userFormData.correoElectronico, // Preservar exactamente como se ingresa
         eventoId: selectedEventId
       };
       
@@ -575,7 +577,7 @@ const EventAdminDashboard = () => {
       rutOId: usuario.rutOId || '',
       telefonoContacto: usuario.telefonoContacto || '',
       rol: usuario.rol || 'Validador',
-      password: usuario.password || ''
+      password: '' // No incluir password al editar, ya que no se debe actualizar
     });
     setShowEditUserForm(true);
   };
@@ -585,12 +587,18 @@ const EventAdminDashboard = () => {
     try {
       setCreateUserLoading(true);
       
+      // Excluir el campo password al editar, ya que la contraseña se genera automáticamente solo al crear
+      const { password, ...userDataToUpdate } = userFormData;
+      
+      // Asegurar que el correo electrónico se preserve exactamente como se ingresa (con puntos y guiones)
+      userDataToUpdate.correoElectronico = userFormData.correoElectronico;
+      
       const response = await fetch(API_CONFIG.ENDPOINTS.USER_BY_ID(editingUser._id || editingUser.id), {
         method: 'PUT',
         headers: {
           ...API_CONFIG.REQUEST_CONFIG.headers,
         },
-        body: JSON.stringify(userFormData),
+        body: JSON.stringify(userDataToUpdate),
       });
 
       const result = await response.json();

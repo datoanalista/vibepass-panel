@@ -31,9 +31,11 @@ const AddUserForm = ({
   // Función para manejar cambios en el RUT y generar contraseña automáticamente
   const handleRUTChange = (value) => {
     handleUserFormChange('rutOId', value);
-    // Generar contraseña automáticamente
-    const password = generatePasswordFromRUT(value);
-    handleUserFormChange('password', password);
+    // Generar contraseña automáticamente solo al crear, no al editar
+    if (!isEditing) {
+      const password = generatePasswordFromRUT(value);
+      handleUserFormChange('password', password);
+    }
   };
 
   // Establecer rol como "Validador" por defecto al montar el componente
@@ -47,7 +49,7 @@ const AddUserForm = ({
       <Container maxWidth="lg">
         <Box sx={{ mb: 3 }}>
           <Typography variant="body1" sx={{ color: '#6B7280', fontSize: '14px' }}>
-            Completa la información para crear un nuevo validador
+            {isEditing ? 'Edita la información del validador' : 'Completa la información para crear un nuevo validador'}
           </Typography>
         </Box>
 
@@ -210,36 +212,38 @@ const AddUserForm = ({
                   />
                 </Box>
 
-                {/* Contraseña generada automáticamente */}
-                <Box>
-                  <Typography variant="subtitle1" sx={{ mb: 1, fontWeight: 500, color: '#374151', fontSize: '14px' }}>
-                    Contraseña (generada automáticamente)
-                  </Typography>
-                  <TextField
-                    fullWidth
-                    type="text"
-                    value={userFormData.password || ''}
-                    placeholder="Se generará automáticamente con el RUT"
-                    disabled
-                    sx={{
-                      '& .MuiOutlinedInput-root': {
-                        borderRadius: '10px',
-                        backgroundColor: '#F3F4F6',
-                        boxShadow: '0px 4px 4px 0px rgba(0, 0, 0, 0.25)',
-                        '& fieldset': {
-                          border: 'none'
-                        },
-                        '&.Mui-disabled': {
+                {/* Contraseña generada automáticamente - Solo mostrar al crear, no al editar */}
+                {!isEditing && (
+                  <Box>
+                    <Typography variant="subtitle1" sx={{ mb: 1, fontWeight: 500, color: '#374151', fontSize: '14px' }}>
+                      Contraseña (generada automáticamente)
+                    </Typography>
+                    <TextField
+                      fullWidth
+                      type="text"
+                      value={userFormData.password || ''}
+                      placeholder="Se generará automáticamente con el RUT"
+                      disabled
+                      sx={{
+                        '& .MuiOutlinedInput-root': {
+                          borderRadius: '10px',
                           backgroundColor: '#F3F4F6',
-                          color: '#6B7280'
+                          boxShadow: '0px 4px 4px 0px rgba(0, 0, 0, 0.25)',
+                          '& fieldset': {
+                            border: 'none'
+                          },
+                          '&.Mui-disabled': {
+                            backgroundColor: '#F3F4F6',
+                            color: '#6B7280'
+                          }
                         }
-                      }
-                    }}
-                  />
-                  <Typography variant="caption" sx={{ color: '#6B7280', fontSize: '12px', mt: 0.5, display: 'block' }}>
-                    La contraseña se genera automáticamente con los primeros 6 dígitos del RUT
-                  </Typography>
-                </Box>
+                      }}
+                    />
+                    <Typography variant="caption" sx={{ color: '#6B7280', fontSize: '12px', mt: 0.5, display: 'block' }}>
+                      La contraseña se genera automáticamente con los primeros 6 dígitos del RUT
+                    </Typography>
+                  </Box>
+                )}
 
                 {/* Rol fijo como Validador - Campo oculto */}
                 <Box sx={{ display: 'none' }}>

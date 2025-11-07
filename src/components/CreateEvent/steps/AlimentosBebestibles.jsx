@@ -192,7 +192,7 @@ const AlimentosBebestibles = ({
                       }
                     }}
                   >
-                    Agregar nueva entrada
+                    Agregar nuevo producto
                   </Button>
               </Box>
             ) : (
@@ -493,7 +493,7 @@ const AlimentosBebestibles = ({
                       }
                     }}
                   >
-                    Agregar nueva entrada
+                    Agregar nuevo producto
                   </Button>
                 </Box>
               </Stack>
