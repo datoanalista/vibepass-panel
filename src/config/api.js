@@ -1,8 +1,12 @@
 // Configuración centralizada de la API
 // Este archivo centraliza todas las URLs y configuraciones de la API
 
-// URL base del API - Automático: Variables de entorno o localhost
-const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3001';
+// URL base del API:
+// - Produccion: mismo origen por defecto (ej. http://IP/api)
+// - Desarrollo: localhost:3001
+const BASE_URL =
+  process.env.NEXT_PUBLIC_API_BASE_URL ||
+  (process.env.NODE_ENV === 'production' ? '' : 'http://localhost:3001');
 
 const API_CONFIG = {
   // URL base del API
@@ -105,4 +109,3 @@ export const apiRequest = async (url, options = {}) => {
 };
 
 export default API_CONFIG;
-
