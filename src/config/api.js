@@ -1,12 +1,33 @@
 // Configuración centralizada de la API
 // Este archivo centraliza todas las URLs y configuraciones de la API
 
-// URL base del API:
-// - Produccion: mismo origen por defecto (ej. http://IP/api)
-// - Desarrollo: localhost:3001
-const BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL ||
-  (process.env.NODE_ENV === 'production' ? '' : 'http://localhost:3001');
+const sanitizeBaseUrl = (value) => {
+  if (!value) return '';
+
+  const trimmedValue = value.trim();
+  if (!trimmedValue || trimmedValue === 'undefined' || trimmedValue.includes('@')) {
+    return '';
+  }
+
+  return trimmedValue.replace(/\/$/, '');
+};
+
+const resolveBaseUrl = () => {
+  const envBaseUrl = sanitizeBaseUrl(process.env.NEXT_PUBLIC_API_BASE_URL);
+  if (envBaseUrl) {
+    return envBaseUrl;
+  }
+
+  if (typeof window !== 'undefined' && window.location?.origin) {
+    return sanitizeBaseUrl(window.location.origin);
+  }
+
+  return process.env.NODE_ENV === 'production'
+    ? 'https://vibepass.cl'
+    : 'http://localhost:3001';
+};
+
+const BASE_URL = resolveBaseUrl();
 
 const API_CONFIG = {
   // URL base del API

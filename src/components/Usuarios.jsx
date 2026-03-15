@@ -316,37 +316,10 @@ const Usuarios = ({ onAddUser, onEditUser, selectedEventId, onTabChange }) => {
         return;
       }
       
-      // Construir URL con filtro por evento
-      // Intentar primero con el endpoint de dashboard si existe
-      const baseUrl = API_CONFIG.BASE_URL;
-      const dashboardUsersUrl = `${baseUrl}/api/dashboard/users?eventoId=${selectedEventId}`;
       const regularUsersUrl = `${API_CONFIG.ENDPOINTS.USERS}?eventoId=${selectedEventId}`;
       
-      console.log('🌐 [DEBUG] URL de petición (dashboard):', dashboardUsersUrl);
       console.log('🌐 [DEBUG] URL de petición (regular):', regularUsersUrl);
       console.log('🌐 [DEBUG] API_CONFIG.ENDPOINTS.USERS:', API_CONFIG.ENDPOINTS.USERS);
-      
-      let finalUrl, finalRegularUrl;
-      
-      // Verificar si la URL base es válida
-      if (!baseUrl || baseUrl.includes('@') || baseUrl === 'undefined') {
-        console.error('💥 [DEBUG] URL base inválida:', baseUrl);
-        console.error('💥 [DEBUG] Esto indica un problema con las variables de entorno en producción');
-        
-        // Fallback para GitHub Pages - usar una URL por defecto
-        const fallbackBaseUrl = 'https://tu-servidor-api.com'; // Cambiar por tu URL real
-        console.log('🔄 [DEBUG] Usando URL de fallback:', fallbackBaseUrl);
-        
-        finalUrl = `${fallbackBaseUrl}/api/dashboard/users?eventoId=${selectedEventId}`;
-        finalRegularUrl = `${fallbackBaseUrl}/api/users?eventoId=${selectedEventId}`;
-        
-        console.log('🌐 [DEBUG] URL de fallback (dashboard):', finalUrl);
-        console.log('🌐 [DEBUG] URL de fallback (regular):', finalRegularUrl);
-      } else {
-        // Usar el endpoint de dashboard primero
-        finalUrl = dashboardUsersUrl;
-        finalRegularUrl = regularUsersUrl;
-      }
         
       // Headers con autenticación
       const headers = {
@@ -356,40 +329,11 @@ const Usuarios = ({ onAddUser, onEditUser, selectedEventId, onTabChange }) => {
       
       console.log('🔐 [DEBUG] Headers enviados:', headers);
       
-      let response = await fetch(finalUrl, {
+      const response = await fetch(regularUsersUrl, {
         method: 'GET',
         headers: headers
       });
-      console.log('📥 [DEBUG] Status de respuesta (dashboard):', response.status);
-      
-      // Si falla el endpoint de dashboard, probar el endpoint regular
-      if (!response.ok) {
-        console.log('⚠️ [DEBUG] Endpoint de dashboard falló, probando endpoint regular');
-        response = await fetch(finalRegularUrl, {
-          method: 'GET',
-          headers: headers
-        });
-        console.log('📥 [DEBUG] Status de respuesta (regular):', response.status);
-        
-        // Si también falla el endpoint regular, probar URLs alternativas
-        if (!response.ok) {
-          console.log('⚠️ [DEBUG] Endpoint regular también falló, probando URLs alternativas');
-          
-          // Probar con localhost (por si acaso en producción está mal configurado)
-          const localhostUrl = `http://localhost:3001/api/dashboard/users?eventoId=${selectedEventId}`;
-          console.log('🌐 [DEBUG] Probando localhost:', localhostUrl);
-          
-          try {
-            response = await fetch(localhostUrl, {
-              method: 'GET',
-              headers: headers
-            });
-            console.log('📥 [DEBUG] Status de respuesta (localhost):', response.status);
-          } catch (localhostError) {
-            console.log('❌ [DEBUG] Localhost también falló:', localhostError);
-          }
-        }
-      }
+      console.log('📥 [DEBUG] Status de respuesta (regular):', response.status);
       
       console.log('📥 [DEBUG] Headers de respuesta:', Object.fromEntries(response.headers.entries()));
       
