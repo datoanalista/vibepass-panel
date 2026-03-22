@@ -37,6 +37,7 @@ import es from 'date-fns/locale/es';
 import dayjs from 'dayjs';
 import { useRouter } from 'next/navigation';
 import Header from '../../Header';
+import { createEventDatePickerProps } from '../datePickerConfig';
 
 const InformacionGeneral = ({ 
   eventFormData, 
@@ -240,6 +241,7 @@ const InformacionGeneral = ({
                     Fecha evento
                   </Typography>
                   <DatePicker
+                    {...createEventDatePickerProps}
                     selected={parseDate(eventFormData.fechaEvento)}
                     onChange={(date) => {
                       if (date) {
@@ -283,6 +285,7 @@ const InformacionGeneral = ({
                     Hora inicio
                   </Typography>
                   <DatePicker
+                    {...createEventDatePickerProps}
                     selected={eventFormData.horaInicio ? new Date(`2024-01-01 ${eventFormData.horaInicio}`) : null}
                     onChange={(date) => {
                       const formattedTime = date ? dayjs(date).format('HH:mm') : '';
@@ -320,6 +323,7 @@ const InformacionGeneral = ({
                     Hora término
                   </Typography>
                   <DatePicker
+                    {...createEventDatePickerProps}
                     selected={eventFormData.horaTermino ? new Date(`2024-01-01 ${eventFormData.horaTermino}`) : null}
                     onChange={(date) => {
                       const formattedTime = date ? dayjs(date).format('HH:mm') : '';

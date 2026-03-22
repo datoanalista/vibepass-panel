@@ -41,6 +41,7 @@ import es from 'date-fns/locale/es';
 import dayjs from 'dayjs';
 import { useRouter } from 'next/navigation';
 import Header from '../../Header';
+import { createEventDatePickerProps } from '../datePickerConfig';
 
 
 const ConfiguracionEntradas = ({ 
@@ -366,6 +367,7 @@ const ConfiguracionEntradas = ({
                           Fecha inicio venta
                         </Typography>
                         <DatePicker
+                          {...createEventDatePickerProps}
                           selected={parseDate(entrada.fechasVenta?.inicio)}
                           onChange={(date) => {
                             if (date) {
@@ -412,6 +414,7 @@ const ConfiguracionEntradas = ({
                           Fecha fin venta
                         </Typography>
                         <DatePicker
+                          {...createEventDatePickerProps}
                           selected={parseDate(entrada.fechasVenta?.fin)}
                           onChange={(date) => {
                             if (date) {
