@@ -43,6 +43,16 @@ import { useRouter } from 'next/navigation';
 import Header from '../../Header';
 import { createEventDatePickerProps } from '../datePickerConfig';
 
+const TICKET_TYPE_OPTIONS = [
+  'Preventa 1',
+  'Preventa 2',
+  'Preventa 3',
+  'General',
+  'Vip 1',
+  'Vip 2',
+  'Vip 3',
+  'Cortesía'
+];
 
 const ConfiguracionEntradas = ({ 
   eventFormData, 
@@ -252,11 +262,11 @@ const ConfiguracionEntradas = ({
                             <MenuItem value="" disabled>
                               Seleccione...
                             </MenuItem>
-                            <MenuItem value="general">General</MenuItem>
-                            <MenuItem value="vip">VIP</MenuItem>
-                            <MenuItem value="estudiante">Estudiante</MenuItem>
-                            <MenuItem value="tercera_edad">Tercera Edad</MenuItem>
-                            <MenuItem value="profesores">Profesores</MenuItem>
+                            {TICKET_TYPE_OPTIONS.map((ticketType) => (
+                              <MenuItem key={ticketType} value={ticketType}>
+                                {ticketType}
+                              </MenuItem>
+                            ))}
                           </Select>
                         </FormControl>
                       </Box>
